@@ -30,3 +30,12 @@ prisma/migrations/dev.db
 
 # Testing
 coverage/
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+**/.vs/
+*.userosscache
+*.sln.docstates
