@@ -12,5 +12,7 @@ namespace SFBooking.Server.Data
         public DbSet<Booking> Bookings => Set<Booking>();
         public DbSet<Approval> Approvals => Set<Approval>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+        public DbSet<Notification> Notifications => Set<Notification>();
     }
 }
