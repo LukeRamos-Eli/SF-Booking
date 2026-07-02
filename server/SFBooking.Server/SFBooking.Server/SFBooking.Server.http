@@ -4,3 +4,18 @@ GET {{SFBooking.Server_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+@host = https://localhost:7074
+
+### Get all organizations
+GET {{host}}/api/organizations
+
+### Create an organization
+POST {{host}}/api/organizations
+Content-Type: application/json
+
+{
+  "name": "University of Cebu"
+}
+
+### Verify join code (replace XXXXXXXX with the code returned from create)
+GET {{host}}/api/organizations/verify/XXXXXXXX
