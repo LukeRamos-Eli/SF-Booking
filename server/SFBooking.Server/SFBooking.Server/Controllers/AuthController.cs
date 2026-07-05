@@ -113,6 +113,10 @@ namespace SFBooking.Server.Controllers
                 return StatusCode(503, new { message = "Database temporarily unavailable.", error = ex.Message });
             }
         }
+
+            
+
+
     }
 
     public class RegisterDto

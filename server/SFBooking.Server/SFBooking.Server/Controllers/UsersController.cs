@@ -320,10 +320,69 @@ namespace SFBooking.Server.Controllers
                 return StatusCode(503, new { message = "Database temporarily unavailable.", error = ex.Message });
             }
         }
+
+        [HttpPut("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.CurrentPassword) ||
+                string.IsNullOrWhiteSpace(dto.NewPassword) ||
+                string.IsNullOrWhiteSpace(dto.ConfirmPassword))
+            {
+                return BadRequest(new { message = "All fields are required." });
+            }
+
+            if (dto.NewPassword != dto.ConfirmPassword)
+            {
+                return BadRequest(new { message = "New password and confirm password do not match." });
+            }
+
+            if (dto.NewPassword.Length < 8)
+            {
+                return BadRequest(new { message = "Password must be at least 8 characters long." });
+            }
+
+            var userId = GetCurrentUserId();
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+            {
+                return NotFound(new { message = "User not found." });
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
+            {
+                return BadRequest(new { message = "Current password is incorrect." });
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Password changed successfully." });
+        }
+
+
     }
+
+
+
+    public class ChangePasswordDto
+    {
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+
+
 
     public class ChangeRoleDto
     {
         public string Role { get; set; } = string.Empty;
     }
+
+
+
+
 }
