@@ -1,28 +1,40 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { getUser, logout, isLoggedIn } from '@/services/auth.service';
 
-export default function Dashboard() {
+type UserData = ReturnType<typeof getUser>;
+
+export default function AdminDashboard() {
   const router = useRouter();
-  const userData = typeof window !== 'undefined' ? getUser() : null;
+  const [state, setState] = useState<{ userData: UserData; checked: boolean }>({
+    userData: null,
+    checked: false,
+  });
 
   useEffect(() => {
     if (!isLoggedIn()) {
       router.push('/login');
       return;
     }
-    if (userData?.role === 'Admin' || userData?.role === 'Manager') {
-      router.push('/admin/dashboard');
+    const user = getUser();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState({ userData: user, checked: true });
+
+    if (user?.role !== 'Admin' && user?.role !== 'Manager') {
+      router.push('/dashboard');
     }
-  }, [router, userData?.role]);
+  }, [router]);
+
+  const { userData, checked } = state;
 
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
-  if (!userData) return (
+  if (!checked || !userData) return (
     <div className="flex items-center justify-center min-h-screen">
       <p className="text-gray-500">Loading...</p>
     </div>
@@ -32,47 +44,61 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">SF Booking</h1>
+          <h1 className="text-lg font-semibold text-gray-900">SF Booking — Admin</h1>
           <p className="text-xs text-gray-500">{userData.organizationName}</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-right">
+          <Link href="/dashboard/profile" className="text-right hover:opacity-70 transition-opacity cursor-pointer">
             <p className="text-sm font-medium text-gray-900">{userData.fullName}</p>
-            <p className="text-xs text-gray-500">{userData.role}</p>
-          </div>
+            <p className="text-xs text-purple-600">{userData.role}</p>
+          </Link>
           <button onClick={handleLogout} className="text-sm text-red-600 hover:underline">
             Logout
           </button>
         </div>
-      </nav>
+        </nav>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Dashboard</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">Admin dashboard</h2>
 
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Pending bookings</p>
+            <p className="text-xs text-gray-500 mb-1">Total bookings</p>
             <p className="text-2xl font-semibold text-gray-900">0</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Approved bookings</p>
-            <p className="text-2xl font-semibold text-green-600">0</p>
+            <p className="text-xs text-gray-500 mb-1">Pending approval</p>
+            <p className="text-2xl font-semibold text-yellow-600">0</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Rejected bookings</p>
-            <p className="text-2xl font-semibold text-red-600">0</p>
+            <p className="text-xs text-gray-500 mb-1">Pending accounts</p>
+            <p className="text-2xl font-semibold text-blue-600">0</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs text-gray-500 mb-1">Total facilities</p>
+            <p className="text-2xl font-semibold text-green-600">0</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-medium text-gray-900 mb-4">Quick actions</h3>
-          <div className="flex gap-3">
-            <button className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-              Book a facility
-            </button>
-            <button className="border border-gray-300 text-gray-700 text-sm px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-              View my bookings
-            </button>
+        <div className="grid grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="text-sm font-medium text-gray-900 mb-4">Manage</h3>
+            <div className="flex flex-col gap-3">
+              <button className="border border-gray-300 text-gray-700 text-sm px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                Pending booking approvals
+              </button>
+              <button className="border border-gray-300 text-gray-700 text-sm px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                Pending user accounts
+              </button>
+              <button className="border border-gray-300 text-gray-700 text-sm px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                Manage facilities
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="text-sm font-medium text-gray-900 mb-4">Recent activity</h3>
+            <p className="text-sm text-gray-400">No recent activity yet.</p>
           </div>
         </div>
       </main>
