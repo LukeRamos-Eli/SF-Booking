@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SFBooking.Server.Data;
 using SFBooking.Server.Services;
+using System.Security.Claims;
 
 namespace SFBooking.Server.Controllers
 {
@@ -113,6 +115,45 @@ namespace SFBooking.Server.Controllers
                 return StatusCode(503, new { message = "Database temporarily unavailable.", error = ex.Message });
             }
         }
+
+        [HttpPut("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dto.CurrentPassword) ||
+                    string.IsNullOrWhiteSpace(dto.NewPassword) ||
+                    string.IsNullOrWhiteSpace(dto.ConfirmPassword))
+                    return BadRequest(new { message = "All fields are required." });
+
+                if (dto.NewPassword != dto.ConfirmPassword)
+                    return BadRequest(new { message = "New password and confirm password do not match." });
+
+                if (dto.NewPassword.Length < 8)
+                    return BadRequest(new { message = "Password must be at least 8 characters long." });
+
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                          ?? User.FindFirst("sub")?.Value!);
+
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+                if (user == null)
+                    return NotFound(new { message = "User not found." });
+
+                if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
+                    return BadRequest(new { message = "Current password is incorrect." });
+
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Password changed successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(503, new { message = "Database temporarily unavailable.", error = ex.Message });
+            }
+        }
     }
 
     public class RegisterDto
@@ -127,5 +168,12 @@ namespace SFBooking.Server.Controllers
     {
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+    }
+
+    public class ChangePasswordDto
+    {
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }
