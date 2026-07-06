@@ -45,7 +45,7 @@ export async function changePassword(
   newPassword: string,
   confirmPassword: string
 ): Promise<{ message: string }> {
-  const response = await fetch(`${API_URL}/api/users/change-password`, {
+  const response = await fetch(`${API_URL}/api/auth/change-password`, {
     method: 'PUT',
     headers: authHeaders(),
     body: JSON.stringify({
