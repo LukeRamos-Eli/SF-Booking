@@ -1,6 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { getUser, logout, isLoggedIn } from '@/services/auth.service';
 
 export default function AdminDashboard() {
@@ -36,10 +37,10 @@ export default function AdminDashboard() {
           <p className="text-xs text-gray-500">{userData.organizationName}</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-right">
+          <Link href="/admin/dashboard/profile" className="text-right hover:opacity-70 transition-opacity cursor-pointer">
             <p className="text-sm font-medium text-gray-900">{userData.fullName}</p>
             <p className="text-xs text-purple-600 font-medium">{userData.role}</p>
-          </div>
+          </Link>
           <button onClick={handleLogout} className="text-sm text-red-600 hover:underline">
             Logout
           </button>
