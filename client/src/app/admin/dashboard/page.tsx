@@ -19,6 +19,7 @@ export default function AdminDashboard() {
       return;
     }
     const user = getUser();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState({ userData: user, checked: true });
 
     if (user?.role !== 'Admin' && user?.role !== 'Manager') {
