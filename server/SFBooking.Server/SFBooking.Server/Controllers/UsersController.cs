@@ -18,7 +18,6 @@ namespace SFBooking.Server.Controllers
             _context = context;
         }
 
-        // Helper: get current logged in user's ID from JWT token
         private int GetCurrentUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)
@@ -26,7 +25,6 @@ namespace SFBooking.Server.Controllers
             return int.Parse(claim!.Value);
         }
 
-        // Helper: get current user's organization ID
         private async Task<int> GetCurrentUserOrgId()
         {
             var userId = GetCurrentUserId();
@@ -34,8 +32,6 @@ namespace SFBooking.Server.Controllers
             return user!.OrganizationId;
         }
 
-        // GET: api/users
-        // Admin and Manager only - get all users in their organization
         [HttpGet]
         [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> GetAll()
@@ -66,8 +62,6 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // GET: api/users/pending
-        // Admin only - get all pending accounts
         [HttpGet("pending")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetPending()
@@ -98,8 +92,6 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // GET: api/users/admins
-        // Admin only - get all admins in the organization
         [HttpGet("admins")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAdmins()
@@ -129,8 +121,6 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // PUT: api/users/{id}/approve
-        // Admin only - approve a pending account
         [HttpPut("{id}/approve")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Approve(int id)
@@ -152,7 +142,6 @@ namespace SFBooking.Server.Controllers
                 user.Status = AccountStatus.Active;
                 await _context.SaveChangesAsync();
 
-                // Log to audit trail
                 _context.AuditLogs.Add(new AuditLog
                 {
                     OrganizationId = orgId,
@@ -180,8 +169,6 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // PUT: api/users/{id}/deactivate
-        // Admin only - deactivate a user account
         [HttpPut("{id}/deactivate")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Deactivate(int id)
@@ -232,8 +219,6 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // PUT: api/users/{id}/role
-        // Admin only - change a user's role
         [HttpPut("{id}/role")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ChangeRole(int id, [FromBody] ChangeRoleDto dto)
@@ -286,8 +271,6 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // GET: api/users/me
-        // Any logged in user - get own profile
         [HttpGet("me")]
         public async Task<IActionResult> GetMyProfile()
         {
@@ -320,10 +303,61 @@ namespace SFBooking.Server.Controllers
                 return StatusCode(503, new { message = "Database temporarily unavailable.", error = ex.Message });
             }
         }
+
+        [HttpPut("me")]
+        public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateProfileDto dto)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dto.FullName) || string.IsNullOrWhiteSpace(dto.Email))
+                    return BadRequest(new { message = "Full name and email are required." });
+
+                var userId = GetCurrentUserId();
+                var user = await _context.Users.FindAsync(userId);
+
+                if (user == null)
+                    return NotFound(new { message = "User not found." });
+
+                if (dto.Email != user.Email)
+                {
+                    var emailTaken = await _context.Users
+                        .AnyAsync(u => u.Email == dto.Email && u.Id != userId);
+                    if (emailTaken)
+                        return BadRequest(new { message = "Email is already in use." });
+                }
+
+                user.FullName = dto.FullName;
+                user.Email = dto.Email;
+                await _context.SaveChangesAsync();
+
+                var organization = await _context.Organizations.FindAsync(user.OrganizationId);
+
+                return Ok(new
+                {
+                    user.Id,
+                    user.FullName,
+                    user.Email,
+                    Role = user.Role.ToString(),
+                    Status = user.Status.ToString(),
+                    OrganizationName = organization?.Name,
+                    user.CreatedAt
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(503, new { message = "Database temporarily unavailable.", error = ex.Message });
+            }
+        }
     }
 
     public class ChangeRoleDto
     {
         public string Role { get; set; } = string.Empty;
+    }
+
+    public class UpdateProfileDto
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
     }
 }
