@@ -1,30 +1,41 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getUser, logout, isLoggedIn } from '@/services/auth.service';
 
+type UserData = ReturnType<typeof getUser>;
+
 export default function AdminDashboard() {
   const router = useRouter();
-  const userData = typeof window !== 'undefined' ? getUser() : null;
+  const [state, setState] = useState<{ userData: UserData; checked: boolean }>({
+    userData: null,
+    checked: false,
+  });
 
   useEffect(() => {
     if (!isLoggedIn()) {
       router.push('/login');
       return;
     }
-    if (userData?.role !== 'Admin' && userData?.role !== 'Manager') {
+    const user = getUser();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState({ userData: user, checked: true });
+
+    if (user?.role !== 'Admin' && user?.role !== 'Manager') {
       router.push('/dashboard');
     }
-  }, [router, userData?.role]);
+  }, [router]);
+
+  const { userData, checked } = state;
 
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
-  if (!userData) return (
-    <div className="flex items-center justify-center min-h-screen">
+  if (!checked || !userData) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <p className="text-gray-500">Loading...</p>
     </div>
   );
