@@ -21,7 +21,7 @@ namespace SFBooking.Server.Controllers
         private int GetCurrentUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)
-                     ?? User.FindFirst("sub");
+                ?? User.FindFirst("sub");
             return int.Parse(claim!.Value);
         }
 
@@ -33,14 +33,12 @@ namespace SFBooking.Server.Controllers
         }
 
         // GET: api/bookings/mine
-        // Any logged in user - view own bookings
         [HttpGet("mine")]
         public async Task<IActionResult> GetMine()
         {
             try
             {
                 var userId = GetCurrentUserId();
-
                 var bookings = await _context.Bookings
                     .Include(b => b.Facility)
                     .Where(b => b.RequestedById == userId)
@@ -67,7 +65,6 @@ namespace SFBooking.Server.Controllers
         }
 
         // GET: api/bookings
-        // Admin/Manager only - view all bookings in the organization
         [HttpGet]
         [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> GetAll()
@@ -75,7 +72,6 @@ namespace SFBooking.Server.Controllers
             try
             {
                 var orgId = await GetCurrentUserOrgId();
-
                 var bookings = await _context.Bookings
                     .Include(b => b.Facility)
                     .Include(b => b.RequestedBy)
@@ -146,7 +142,6 @@ namespace SFBooking.Server.Controllers
         }
 
         // POST: api/bookings
-        // Any logged in user - submit a booking request
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateBookingDto dto)
         {
@@ -173,7 +168,6 @@ namespace SFBooking.Server.Controllers
                 if (!facility.IsActive)
                     return BadRequest(new { message = "This facility is not currently active." });
 
-                // Conflict detection: block overlap with any Pending or Approved booking
                 var hasConflict = await _context.Bookings.AnyAsync(b =>
                     b.FacilityId == dto.FacilityId &&
                     (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Approved) &&
@@ -226,15 +220,106 @@ namespace SFBooking.Server.Controllers
             }
         }
 
+        // PUT: api/bookings/{id}
+        // Owner only - edit a booking that is still Pending. Re-runs the same
+        // validation and conflict checks as Create, since the time/facility
+        // may be changing. Approved/Rejected/Cancelled bookings can't be
+        // edited directly - cancel and resubmit instead, so the approval
+        // that already happened can't be silently bypassed.
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateBookingDto dto)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var orgId = await GetCurrentUserOrgId();
+
+                var booking = await _context.Bookings
+                    .Include(b => b.Facility)
+                    .FirstOrDefaultAsync(b => b.Id == id && b.Facility!.OrganizationId == orgId);
+
+                if (booking == null)
+                    return NotFound(new { message = "Booking not found." });
+
+                if (booking.RequestedById != userId)
+                    return Forbid();
+
+                if (booking.Status != BookingStatus.Pending)
+                    return BadRequest(new { message = "Only pending bookings can be edited. Cancel and resubmit instead." });
+
+                var newFacilityId = dto.FacilityId ?? booking.FacilityId;
+                var newStart = dto.StartTime ?? booking.StartTime;
+                var newEnd = dto.EndTime ?? booking.EndTime;
+                var newPurpose = string.IsNullOrWhiteSpace(dto.Purpose) ? booking.Purpose : dto.Purpose;
+
+                if (newEnd <= newStart)
+                    return BadRequest(new { message = "End time must be after start time." });
+
+                if (newStart < DateTime.UtcNow)
+                    return BadRequest(new { message = "Cannot book a time in the past." });
+
+                var facility = await _context.Facilities
+                    .FirstOrDefaultAsync(f => f.Id == newFacilityId && f.OrganizationId == orgId);
+
+                if (facility == null)
+                    return NotFound(new { message = "Facility not found." });
+
+                if (!facility.IsActive)
+                    return BadRequest(new { message = "This facility is not currently active." });
+
+                var hasConflict = await _context.Bookings.AnyAsync(b =>
+                    b.Id != booking.Id &&
+                    b.FacilityId == newFacilityId &&
+                    (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Approved) &&
+                    b.StartTime < newEnd &&
+                    b.EndTime > newStart);
+
+                if (hasConflict)
+                    return BadRequest(new { message = "This facility is already booked or pending for that time slot." });
+
+                booking.FacilityId = newFacilityId;
+                booking.StartTime = newStart;
+                booking.EndTime = newEnd;
+                booking.Purpose = newPurpose;
+
+                await _context.SaveChangesAsync();
+
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    OrganizationId = orgId,
+                    ActorId = userId,
+                    Action = "booking_edited",
+                    TargetTable = "Bookings",
+                    TargetId = booking.Id,
+                    Details = $"Booking edited for facility '{facility.Name}'",
+                    CreatedAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Booking updated.",
+                    booking.Id,
+                    FacilityName = facility.Name,
+                    booking.StartTime,
+                    booking.EndTime,
+                    booking.Purpose,
+                    Status = booking.Status.ToString()
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(503, new { message = "Database temporarily unavailable.", error = ex.Message });
+            }
+        }
+
         // PUT: api/bookings/{id}/cancel
-        // Owner only - cancel own pending or approved booking
         [HttpPut("{id}/cancel")]
         public async Task<IActionResult> Cancel(int id)
         {
             try
             {
                 var userId = GetCurrentUserId();
-
                 var booking = await _context.Bookings
                     .Include(b => b.Facility)
                     .FirstOrDefaultAsync(b => b.Id == id);
@@ -282,5 +367,13 @@ namespace SFBooking.Server.Controllers
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public string Purpose { get; set; } = string.Empty;
+    }
+
+    public class UpdateBookingDto
+    {
+        public int? FacilityId { get; set; }
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
+        public string? Purpose { get; set; }
     }
 }

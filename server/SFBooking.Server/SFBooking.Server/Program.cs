@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SFBooking.Server.Data;
 using SFBooking.Server.Services;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,27 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     ));
 
 builder.Services.AddScoped<JwtService>();
+builder.Services.AddScoped<IEmailService, ConsoleEmailService>();
+builder.Services.AddSingleton<LoginAttemptTracker>();
+
+// General throttle on the auth endpoints (login, register, forgot-password):
+// 10 requests per minute per IP address. This is on top of, not instead of,
+// the per-email lockout in LoginAttemptTracker - this one stops raw spam/
+// abuse from a single source, the tracker stops one account being targeted
+// even if the attacker rotates IPs.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("AuthPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -44,8 +67,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins("http://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+            // TODO: add your deployed Vercel URL here once the frontend is live, e.g.
+            // .WithOrigins("http://localhost:3000", "https://sf-booking.vercel.app")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
 
@@ -63,6 +88,12 @@ app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllers();
+
+// Lightweight health check for uptime pingers (Render free-tier warming, etc).
+// Deliberately does NOT touch the database - just confirms the process is alive,
+// so pinging it doesn't burn a DB round trip every few minutes.
+app.MapGet("/health", () => Results.Ok(new { status = "ok", timestampUtc = DateTime.UtcNow }));
 
 app.Run();

@@ -27,5 +27,9 @@
         public UserRole Role { get; set; }
         public AccountStatus Status { get; set; } = AccountStatus.Pending;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // Added for the forgot/reset password flow
+        public string? PasswordResetToken { get; set; }
+        public DateTime? PasswordResetTokenExpiry { get; set; }
     }
 }
