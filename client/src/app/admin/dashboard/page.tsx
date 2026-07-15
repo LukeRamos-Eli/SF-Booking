@@ -1,107 +1,73 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { getUser, logout, isLoggedIn } from '@/services/auth.service';
+"use client";
 
-type UserData = ReturnType<typeof getUser>;
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { isLoggedIn } from "@/services/auth.service";
+import { getPendingUsers } from "@/services/admin.service";
+import { getFacilities } from "@/services/facilities.service";
+import { getAllBookings } from "@/services/bookings.service";
+import AdminSidebar from "@/components/AdminSidebar";
+import AdminTopbar from "@/components/AdminTopbar";
+import StatCard from "@/components/StatCard";
+import { UsersIcon, BoxIcon, ChartIcon, ClockIcon } from "@/components/icons";
 
-export default function AdminDashboard() {
+export default function AdminDashboardPage() {
   const router = useRouter();
-  const [state, setState] = useState<{ userData: UserData; checked: boolean }>({
-    userData: null,
-    checked: false,
-  });
+  const [totalBookings, setTotalBookings] = useState(0);
+  const [pendingApproval, setPendingApproval] = useState(0);
+  const [pendingAccounts, setPendingAccounts] = useState(0);
+  const [totalFacilities, setTotalFacilities] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!isLoggedIn()) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
-    const user = getUser();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setState({ userData: user, checked: true });
-
-    if (user?.role !== 'Admin' && user?.role !== 'Manager') {
-      router.push('/dashboard');
-    }
+    (async () => {
+      try {
+        const [bookings, pendingUsers, facilities] = await Promise.all([
+          getAllBookings(),
+          getPendingUsers(),
+          getFacilities(),
+        ]);
+        setTotalBookings(bookings.length);
+        setPendingApproval(bookings.filter((b) => b.status === "Pending").length);
+        setPendingAccounts(pendingUsers.length);
+        setTotalFacilities(facilities.length);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load dashboard.");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [router]);
 
-  const { userData, checked } = state;
-
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
-
-  if (!checked || !userData) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <p className="text-gray-500">Loading...</p>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">SF Booking — Admin</h1>
-          <p className="text-xs text-gray-500">{userData.organizationName}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/admin/dashboard/profile" className="text-right hover:opacity-70 transition-opacity cursor-pointer">
-            <p className="text-sm font-medium text-gray-900">{userData.fullName}</p>
-            <p className="text-xs text-purple-600 font-medium">{userData.role}</p>
-          </Link>
-          <button onClick={handleLogout} className="text-sm text-red-600 hover:underline">
-            Logout
-          </button>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-[#F3F5F8] flex">
+      <AdminSidebar />
+      <div className="flex-1">
+        <AdminTopbar />
+        <main className="px-10 py-10">
+          <h1 className="text-3xl font-semibold text-[#1F2937] mb-8">Dashboard</h1>
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Admin dashboard</h2>
-
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Total bookings</p>
-            <p className="text-2xl font-semibold text-gray-900">0</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Pending approval</p>
-            <p className="text-2xl font-semibold text-yellow-600">0</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Pending accounts</p>
-            <p className="text-2xl font-semibold text-blue-600">0</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Total facilities</p>
-            <p className="text-2xl font-semibold text-green-600">0</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-4">Manage</h3>
-            <div className="space-y-2">
-              <button className="w-full text-left text-sm text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors">
-                Pending booking approvals
-              </button>
-              <button className="w-full text-left text-sm text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors">
-                Pending user accounts
-              </button>
-              <button className="w-full text-left text-sm text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors">
-                Manage facilities
-              </button>
+          {loading ? (
+            <p className="text-sm text-[#8A93A0]">Loading dashboard…</p>
+          ) : error ? (
+            <div className="border border-[#B23A3A]/30 bg-[#B23A3A]/10 rounded-xl px-4 py-3 text-sm text-[#B23A3A]">
+              {error}
             </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-4">Recent activity</h3>
-            <p className="text-sm text-gray-400">No recent activity yet.</p>
-          </div>
-        </div>
-      </main>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+              <StatCard label="Total Bookings" value={totalBookings} icon={<UsersIcon />} tone="purple" />
+              <StatCard label="Pending Approval" value={pendingApproval} icon={<BoxIcon />} tone="yellow" />
+              <StatCard label="Pending Accounts" value={pendingAccounts} icon={<ChartIcon />} tone="green" />
+              <StatCard label="Total Facilities" value={totalFacilities} icon={<ClockIcon />} tone="orange" />
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,107 +1,92 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { getUser, logout, isLoggedIn } from '@/services/auth.service';
+"use client";
 
-type UserData = ReturnType<typeof getUser>;
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { isLoggedIn } from "@/services/auth.service";
+import { getMyBookings, Booking } from "@/services/bookings.service";
+import StudentTopbar from "@/components/StudentTopbar";
+import StudentSidebar from "@/components/StudentSidebar";
+import StatCard from "@/components/StatCard";
+import Badge, { statusVariant } from "@/components/Badge";
+import { UsersIcon, BoxIcon, ChartIcon } from "@/components/icons";
 
-export default function AdminDashboard() {
+export default function StudentDashboardPage() {
   const router = useRouter();
-  const [state, setState] = useState<{ userData: UserData; checked: boolean }>({
-    userData: null,
-    checked: false,
-  });
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!isLoggedIn()) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
-    const user = getUser();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setState({ userData: user, checked: true });
-
-    if (user?.role !== 'Admin' && user?.role !== 'Manager') {
-      router.push('/dashboard');
-    }
+    (async () => {
+      try {
+        const data = await getMyBookings();
+        setBookings(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load dashboard.");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [router]);
 
-  const { userData, checked } = state;
-
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
-
-  if (!checked || !userData) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <p className="text-gray-500">Loading...</p>
-    </div>
-  );
+  const pending = bookings.filter((b) => b.status === "Pending").length;
+  const approved = bookings.filter((b) => b.status === "Approved").length;
+  const rejected = bookings.filter((b) => b.status === "Rejected").length;
+  const recent = bookings.slice(0, 6);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">SF Booking — Admin</h1>
-          <p className="text-xs text-gray-500 ">{userData.organizationName}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/profile" className="text-right hover:opacity-70 transition-opacity cursor-pointer">
-            <p className="text-sm font-medium text-gray-900">{userData.fullName}</p>
-            <p className="text-xs text-purple-600">{userData.role}</p>
-          </Link>
-          <button onClick={handleLogout} className="text-sm text-red-600 hover:underline">
-            Logout
-          </button>
-        </div>
-        </nav>
+    <div className="min-h-screen bg-[#F3F5F8]">
+      <StudentTopbar />
+      <div className="flex">
+        <StudentSidebar />
+        <main className="flex-1 px-10 py-10">
+          <h1 className="text-3xl font-semibold text-[#1F2937] mb-8">Dashboard</h1>
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Admin dashboard</h2>
-
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Total bookings</p>
-            <p className="text-2xl font-semibold text-gray-900">0</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Pending approval</p>
-            <p className="text-2xl font-semibold text-yellow-600">0</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Pending accounts</p>
-            <p className="text-2xl font-semibold text-blue-600">0</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Total facilities</p>
-            <p className="text-2xl font-semibold text-green-600">0</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-4">Manage</h3>
-            <div className="flex flex-col gap-3">
-              <button className="border border-gray-300 text-gray-700 text-sm px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors">
-                Pending booking approvals
-              </button>
-              <button className="border border-gray-300 text-gray-700 text-sm px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors">
-                Pending user accounts
-              </button>
-              <button className="border border-gray-300 text-gray-700 text-sm px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors">
-                Manage facilities
-              </button>
+          {loading ? (
+            <p className="text-sm text-[#8A93A0]">Loading dashboard…</p>
+          ) : error ? (
+            <div className="border border-[#B23A3A]/30 bg-[#B23A3A]/10 rounded-xl px-4 py-3 text-sm text-[#B23A3A]">
+              {error}
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                <StatCard label="Pending Bookings" value={pending} icon={<UsersIcon />} tone="purple" />
+                <StatCard label="Approved Bookings" value={approved} icon={<BoxIcon />} tone="yellow" />
+                <StatCard label="Rejected Bookings" value={rejected} icon={<ChartIcon />} tone="green" />
+              </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-4">Recent activity</h3>
-            <p className="text-sm text-gray-400">No recent activity yet.</p>
-          </div>
-        </div>
-      </main>
+              <div className="bg-white rounded-2xl border border-[#EEF0F3] shadow-sm p-2 max-w-2xl">
+                {recent.length === 0 ? (
+                  <p className="text-sm text-[#8A93A0] px-5 py-6">
+                    No bookings yet — head to Facilities to request one.
+                  </p>
+                ) : (
+                  recent.map((b) => (
+                    <div
+                      key={b.id}
+                      className="flex items-center justify-between px-5 py-4 border-b border-[#F3F5F8] last:border-0"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-[#1F2937]">{b.facilityName}</p>
+                        <p className="text-xs text-[#9AA3AF] mt-0.5">
+                          {new Date(b.startTime).toLocaleDateString()} -{" "}
+                          {new Date(b.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                      <Badge variant={statusVariant(b.status)}>{b.status}</Badge>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
