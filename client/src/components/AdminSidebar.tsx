@@ -55,7 +55,7 @@ export default function AdminSidebar() {
                 href={link.href}
                 className={`block px-4 py-3 rounded-xl text-sm font-medium transition ${
                   active
-                    ? "bg-[#9CC17F] text-white"
+                    ? "bg-[#1B4D3E] text-white"
                     : "text-[#374151] hover:bg-[#F3F5F8]"
                 }`}
               >

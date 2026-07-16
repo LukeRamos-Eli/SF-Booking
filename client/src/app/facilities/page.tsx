@@ -8,6 +8,7 @@ import { createBooking } from "@/services/bookings.service";
 import StudentTopbar from "@/components/StudentTopbar";
 import StudentSidebar from "@/components/StudentSidebar";
 import Badge from "@/components/Badge";
+import { SkeletonCards } from "@/components/Skeleton";
 import { CalendarPlusIcon } from "@/components/icons";
 
 const EMPTY_FORM = { startTime: "", endTime: "", purpose: "" };
@@ -73,15 +74,15 @@ export default function StudentFacilitiesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F3F5F8]">
-      <StudentTopbar />
-      <div className="flex">
-        <StudentSidebar />
-        <main className="flex-1 px-10 py-10">
+    <div className="min-h-screen bg-[#F3F5F8] flex">
+      <StudentSidebar />
+      <div className="flex-1">
+        <StudentTopbar />
+        <main className="px-10 py-10">
           <h1 className="text-3xl font-semibold text-[#1F2937] mb-8">Facilities</h1>
 
           {loading ? (
-            <p className="text-sm text-[#8A93A0]">Loading facilities…</p>
+            <SkeletonCards count={6} />
           ) : error ? (
             <div className="border border-[#B23A3A]/30 bg-[#B23A3A]/10 rounded-xl px-4 py-3 text-sm text-[#B23A3A]">
               {error}
@@ -101,14 +102,14 @@ export default function StudentFacilitiesPage() {
                     </p>
                   </div>
                   <div className="mt-6 space-y-3">
-                    <Badge variant={f.isActive ? "success" : "danger"}>
+                    <Badge color={f.isActive ? "success" : "danger"}>
                       {f.isActive ? "Available" : "Unavailable"}
                     </Badge>
                     <div>
                       <button
                         onClick={() => openBooking(f)}
                         disabled={!f.isActive}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#EAF2E3] text-[#1F2937] text-sm font-medium hover:bg-[#DCEBCF] transition disabled:opacity-40"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#E3E1FA] text-[#1F2937] text-sm font-medium hover:bg-[#D5D2F5] transition disabled:opacity-40"
                       >
                         <CalendarPlusIcon className="w-4 h-4" />
                         Book

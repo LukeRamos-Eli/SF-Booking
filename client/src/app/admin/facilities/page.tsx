@@ -13,6 +13,7 @@ import {
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminTopbar from "@/components/AdminTopbar";
 import Badge from "@/components/Badge";
+import { SkeletonTableRows } from "@/components/Skeleton";
 import { PlusIcon, PencilIcon, TrashIcon } from "@/components/icons";
 
 const EMPTY_FORM = { name: "", type: "", capacity: "" };
@@ -124,21 +125,21 @@ export default function AdminFacilitiesPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-[1.4fr_1.4fr_1fr_1.6fr] px-4 py-3 rounded-lg bg-[#F3F5F8] text-sm font-semibold text-[#1F2937]">
-              <span>Building Name</span>
-              <span>Description</span>
-              <span>Capacity</span>
-              <span>Status</span>
-            </div>
-
             {loading ? (
-              <p className="text-sm text-[#8A93A0] px-4 py-6">Loading facilities…</p>
+              <SkeletonTableRows rows={5} columns={4} />
             ) : error ? (
               <p className="text-sm text-[#B23A3A] px-4 py-6">{error}</p>
             ) : facilities.length === 0 ? (
               <p className="text-sm text-[#8A93A0] px-4 py-6">No facilities added yet.</p>
             ) : (
-              facilities.map((f) => (
+              <>
+              <div className="grid grid-cols-[1.4fr_1.4fr_1fr_1.6fr] px-4 py-3 rounded-lg bg-[#A9C48C] text-sm font-bold text-white uppercase tracking-wide">
+                <span>Building Name</span>
+                <span>Description</span>
+                <span>Capacity</span>
+                <span>Status</span>
+              </div>
+              {facilities.map((f) => (
                 <div
                   key={f.id}
                   className="grid grid-cols-[1.4fr_1.4fr_1fr_1.6fr] items-center px-4 py-5 border-b border-[#F3F5F8] last:border-0"
@@ -147,7 +148,7 @@ export default function AdminFacilitiesPage() {
                   <span className="text-sm text-[#6B7280]">{f.type}</span>
                   <span className="text-sm text-[#6B7280]">{f.capacity}</span>
                   <div className="flex items-center gap-2">
-                    <Badge variant={f.isActive ? "success" : "danger"}>
+                    <Badge color={f.isActive ? "success" : "danger"}>
                       {f.isActive ? "Active" : "Inactive"}
                     </Badge>
                     <button
@@ -169,7 +170,8 @@ export default function AdminFacilitiesPage() {
                     )}
                   </div>
                 </div>
-              ))
+              ))}
+              </>
             )}
           </div>
         </main>

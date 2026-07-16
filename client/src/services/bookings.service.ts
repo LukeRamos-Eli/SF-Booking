@@ -69,3 +69,24 @@ export async function cancelBooking(id: number): Promise<{ message: string }> {
   if (!response.ok) throw new Error(data.message || "Failed to cancel booking");
   return data;
 }
+
+export interface UpdateBookingInput {
+  facilityId?: number;
+  startTime?: string;
+  endTime?: string;
+  purpose?: string;
+}
+
+export async function updateBooking(
+  id: number,
+  input: UpdateBookingInput
+): Promise<{ message: string }> {
+  const response = await fetch(`${API_URL}/api/bookings/${id}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(input),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || "Failed to update booking");
+  return data;
+}

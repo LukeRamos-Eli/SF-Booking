@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isLoggedIn } from "@/services/auth.service";
 import {
@@ -12,17 +12,21 @@ import {
 } from "@/services/admin.service";
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminTopbar from "@/components/AdminTopbar";
-import Badge, { statusVariant } from "@/components/Badge";
-import { FunnelIcon } from "@/components/icons";
+import Badge, { statusColor } from "@/components/Badge";
+import Pagination from "@/components/Pagination";
+import { SkeletonTableRows } from "@/components/Skeleton";
+import { FunnelIcon, ChevronDownIcon } from "@/components/icons";
 
 const FILTERS = ["All", "Pending", "Active", "Inactive"] as const;
 type Filter = (typeof FILTERS)[number];
 const ROLES = ["Student", "Faculty", "Manager", "Admin"] as const;
+const PAGE_SIZE = 7;
 
 export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [filter, setFilter] = useState<Filter>("All");
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -82,7 +86,17 @@ export default function AdminUsersPage() {
     }
   }
 
-  const filtered = users.filter((u) => filter === "All" || u.status === filter);
+  function changeFilter(f: Filter) {
+    setFilter(f);
+    setPage(1);
+  }
+
+  const filtered = useMemo(
+    () => users.filter((u) => filter === "All" || u.status === filter),
+    [users, filter]
+  );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="min-h-screen bg-[#F3F5F8] flex">
@@ -99,9 +113,9 @@ export default function AdminUsersPage() {
             {FILTERS.map((f) => (
               <button
                 key={f}
-                onClick={() => setFilter(f)}
+                onClick={() => changeFilter(f)}
                 className={`px-6 py-3 text-sm font-medium border-r border-[#EEF0F3] last:border-r-0 transition ${
-                  filter === f ? "text-[#1F2937] bg-[#F3F5F8]" : "text-[#8A93A0] hover:bg-[#F9FAFB]"
+                  filter === f ? "text-[#1F2937] bg-[#A9C48C]" : "text-[#8A93A0] hover:bg-[#F9FAFB]"
                 }`}
               >
                 {f}
@@ -109,79 +123,97 @@ export default function AdminUsersPage() {
             ))}
           </div>
 
-          <div className="bg-white rounded-2xl border border-[#EEF0F3] shadow-sm overflow-hidden">
-            <div className="grid grid-cols-[1.4fr_1.6fr_2fr] px-6 py-4 text-xs font-semibold tracking-wide text-[#1F2937] uppercase border-b border-[#EEF0F3]">
-              <span>Name</span>
-              <span>Email</span>
-              <span>Status</span>
-            </div>
+          {loading ? (
+            <SkeletonTableRows rows={7} columns={4} />
+          ) : error ? (
+            <p className="text-sm text-[#B23A3A]">{error}</p>
+          ) : (
+            <div className="bg-white rounded-2xl border border-[#EEF0F3] shadow-sm overflow-hidden">
+              <div className="grid grid-cols-[1.3fr_1.6fr_1.4fr_1.8fr] px-6 py-4 bg-[#A9C48C] text-sm font-bold text-white uppercase tracking-wide">
+                <span>Name</span>
+                <span>Email</span>
+                <span>Status</span>
+                <span>Actions</span>
+              </div>
 
-            {loading ? (
-              <p className="text-sm text-[#8A93A0] px-6 py-6">Loading users…</p>
-            ) : error ? (
-              <p className="text-sm text-[#B23A3A] px-6 py-6">{error}</p>
-            ) : filtered.length === 0 ? (
-              <p className="text-sm text-[#8A93A0] px-6 py-6">No users match this filter.</p>
-            ) : (
-              filtered.map((u) => (
-                <div
-                  key={u.id}
-                  className="grid grid-cols-[1.4fr_1.6fr_2fr] items-center px-6 py-5 border-b border-[#F3F5F8] last:border-0"
-                >
-                  <span className="text-sm font-medium text-[#1F2937]">{u.fullName}</span>
-                  <a href={`mailto:${u.email}`} className="text-sm text-[#5B8CD6] underline underline-offset-2 truncate">
-                    {u.email}
-                  </a>
-                  <div className="flex items-center gap-2 flex-wrap relative">
-                    <Badge variant="role">{u.role}</Badge>
-                    <Badge variant={statusVariant(u.status)}>{u.status}</Badge>
+              {paged.length === 0 ? (
+                <p className="text-sm text-[#8A93A0] px-6 py-6">No users match this filter.</p>
+              ) : (
+                paged.map((u) => (
+                  <div
+                    key={u.id}
+                    className="grid grid-cols-[1.3fr_1.6fr_1.4fr_1.8fr] items-center px-6 py-5 border-b border-[#F3F5F8] last:border-0"
+                  >
+                    <span className="text-sm font-medium text-[#1F2937]">{u.fullName}</span>
+                    <a
+                      href={`mailto:${u.email}`}
+                      className="text-sm text-[#5B8CD6] underline underline-offset-2 truncate"
+                    >
+                      {u.email}
+                    </a>
 
-                    {u.status === "Pending" && (
-                      <button
-                        onClick={() => handleApprove(u.id)}
-                        disabled={busyId === u.id}
-                        className="px-3.5 py-1 rounded-full text-xs font-medium bg-[#9CC17F] text-white hover:bg-[#83AC64] transition disabled:opacity-50"
-                      >
-                        {busyId === u.id ? "…" : "Approve"}
-                      </button>
-                    )}
+                    {/* Read-only badges - deliberately separated from the action buttons below */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge color="role" tone="soft">{u.role}</Badge>
+                      <Badge color={statusColor(u.status)} tone="soft">{u.status}</Badge>
+                    </div>
 
-                    {u.status === "Active" && (
-                      <>
+                    {/* Clickable actions - visually distinct pill buttons with real hover states */}
+                    <div className="flex items-center gap-2 flex-wrap relative">
+                      {u.status === "Pending" && (
                         <button
-                          onClick={() => setRoleMenuId(roleMenuId === u.id ? null : u.id)}
-                          className="px-3.5 py-1 rounded-full text-xs font-medium bg-[#52525B] text-white hover:bg-[#3F3F46] transition"
-                        >
-                          Change Role
-                        </button>
-                        <button
-                          onClick={() => handleDeactivate(u.id)}
+                          onClick={() => handleApprove(u.id)}
                           disabled={busyId === u.id}
-                          className="px-3.5 py-1 rounded-full text-xs font-medium bg-[#B23A3A] text-white hover:bg-[#962F2F] transition disabled:opacity-50"
+                          className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#1B4D3E] text-white hover:bg-[#153D31] transition disabled:opacity-50"
                         >
-                          {busyId === u.id ? "…" : "Deactivate"}
+                          {busyId === u.id ? "…" : "Approve"}
                         </button>
-                      </>
-                    )}
+                      )}
 
-                    {roleMenuId === u.id && (
-                      <div className="absolute top-full left-0 mt-2 bg-white border border-[#EEF0F3] rounded-xl shadow-lg py-2 z-10 w-36">
-                        {ROLES.map((r) => (
+                      {u.status === "Active" && (
+                        <>
                           <button
-                            key={r}
-                            onClick={() => handleChangeRole(u.id, r)}
-                            className="w-full text-left px-4 py-2 text-sm text-[#374151] hover:bg-[#F3F5F8]"
+                            onClick={() => setRoleMenuId(roleMenuId === u.id ? null : u.id)}
+                            className="flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#A9AFB8] text-[#1F2937] hover:bg-[#98A0AB] transition"
                           >
-                            {r}
+                            Change Role
+                            <ChevronDownIcon className="w-3 h-3" />
                           </button>
-                        ))}
-                      </div>
-                    )}
+                          <button
+                            onClick={() => handleDeactivate(u.id)}
+                            disabled={busyId === u.id}
+                            className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#B23A3A] text-white hover:bg-[#962F2F] transition disabled:opacity-50"
+                          >
+                            {busyId === u.id ? "…" : "Deactivate"}
+                          </button>
+                        </>
+                      )}
+
+                      {u.status === "Inactive" && (
+                        <span className="text-xs text-[#9AA3AF] italic">No actions available</span>
+                      )}
+
+                      {roleMenuId === u.id && (
+                        <div className="absolute top-full left-0 mt-2 bg-white border border-[#EEF0F3] rounded-xl shadow-lg py-2 z-10 w-36">
+                          {ROLES.map((r) => (
+                            <button
+                              key={r}
+                              onClick={() => handleChangeRole(u.id, r)}
+                              className="w-full text-left px-4 py-2 text-sm text-[#374151] hover:bg-[#F3F5F8]"
+                            >
+                              {r}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
+                ))
+              )}
+
+              <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+            </div>
+          )}
         </main>
       </div>
     </div>

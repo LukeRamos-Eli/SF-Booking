@@ -21,8 +21,8 @@ export default function StudentSidebar() {
   }
 
   return (
-    <aside className="w-16 shrink-0 min-h-[calc(100vh-6rem)] bg-white border-r border-[#EEF0F3] flex flex-col items-center justify-between py-6">
-      <nav className="flex flex-col items-center gap-2">
+    <aside className="w-20 shrink-0 min-h-screen bg-[#B7CFA0] flex flex-col items-center justify-between pt-32 pb-6">
+      <nav className="flex flex-col items-center gap-3">
         {LINKS.map(({ href, icon: Icon, label }) => {
           const active = pathname?.startsWith(href);
           return (
@@ -31,28 +31,30 @@ export default function StudentSidebar() {
               href={href}
               title={label}
               className={`relative w-11 h-11 rounded-xl flex items-center justify-center transition ${
-                active ? "bg-[#EAF2E3] text-[#8CB369]" : "text-[#9AA3AF] hover:bg-[#F3F5F8]"
+                active ? "bg-[#1B4D3E] text-white" : "text-[#2F5233] hover:bg-white/40"
               }`}
             >
-              {active && <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-[#8CB369]" />}
+              {active && (
+                <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-1 h-7 rounded-r-full bg-[#1B4D3E]" />
+              )}
               <Icon className="w-5 h-5" />
             </Link>
           );
         })}
       </nav>
 
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-3">
         <Link
           href="/dashboard/profile"
           title="Settings"
-          className="w-11 h-11 rounded-xl flex items-center justify-center text-[#9AA3AF] hover:bg-[#F3F5F8] transition"
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-[#2F5233] hover:bg-white/40 transition"
         >
           <GearIcon className="w-5 h-5" />
         </Link>
         <button
           onClick={handleLogout}
           title="Logout"
-          className="w-11 h-11 rounded-xl flex items-center justify-center text-[#9AA3AF] hover:bg-[#F3F5F8] transition"
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-[#2F5233] hover:bg-white/40 transition"
         >
           <PowerIcon className="w-5 h-5" />
         </button>
