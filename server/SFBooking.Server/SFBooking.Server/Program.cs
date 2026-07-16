@@ -66,9 +66,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
-            // TODO: add your deployed Vercel URL here once the frontend is live, e.g.
-            // .WithOrigins("http://localhost:3000", "https://sf-booking.vercel.app")
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "https://sf-booking-rouge.vercel.app"
+            )
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
