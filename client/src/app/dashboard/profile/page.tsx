@@ -87,7 +87,7 @@ export default function AdminProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
-        <Link href="/admin/dashboard" className="text-sm text-blue-600 hover:underline inline-block">
+        <Link href="/dashboard" className="text-sm text-blue-600 hover:underline inline-block">
           ← Back to Dashboard
         </Link>
 
