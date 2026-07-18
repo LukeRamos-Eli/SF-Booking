@@ -20,8 +20,7 @@ namespace SFBooking.Server.Controllers
 
         private int GetCurrentUserId()
         {
-            var claim = User.FindFirst(ClaimTypes.NameIdentifier)
-                     ?? User.FindFirst("sub");
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
             return int.Parse(claim!.Value);
         }
 
@@ -32,28 +31,19 @@ namespace SFBooking.Server.Controllers
             return user!.OrganizationId;
         }
 
-        // GET: api/facilities
-        // All logged in users - get all active facilities in their organization
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             try
             {
                 var orgId = await GetCurrentUserOrgId();
-
                 var facilities = await _context.Facilities
                     .Where(f => f.OrganizationId == orgId && f.IsActive)
                     .Select(f => new
                     {
-                        f.Id,
-                        f.Name,
-                        f.Type,
-                        f.Capacity,
-                        f.IsActive,
-                        f.CreatedAt
+                        f.Id, f.Name, f.Type, f.Capacity, f.IsActive, f.CreatedAt
                     })
-                    .OrderBy(f => f.Name)
-                    .ToListAsync();
+                    .OrderBy(f => f.Name).ToListAsync();
 
                 return Ok(facilities);
             }
@@ -63,25 +53,17 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // GET: api/facilities/{id}
-        // All logged in users - get single facility
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
             try
             {
                 var orgId = await GetCurrentUserOrgId();
-
                 var facility = await _context.Facilities
                     .Where(f => f.Id == id && f.OrganizationId == orgId)
                     .Select(f => new
                     {
-                        f.Id,
-                        f.Name,
-                        f.Type,
-                        f.Capacity,
-                        f.IsActive,
-                        f.CreatedAt
+                        f.Id, f.Name, f.Type, f.Capacity, f.IsActive, f.CreatedAt
                     })
                     .FirstOrDefaultAsync();
 
@@ -96,8 +78,48 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // GET: api/facilities/available?date=2026-07-08&startTime=09:00&endTime=11:00
-        // All logged in users - get available facilities for a specific time slot
+        // GET: api/facilities/{id}/bookings
+        // Any logged-in user - the existing Pending/Approved bookings for
+        // this facility, so the booking form can show what's already taken
+        // instead of the user having to guess and hit a conflict error.
+        // Deliberately does NOT return who requested each slot - just the
+        // time ranges - since any student in the org can call this, and
+        // there's no reason to expose other students' names/purposes here.
+        [HttpGet("{id}/bookings")]
+        public async Task<IActionResult> GetBookings(int id)
+        {
+            try
+            {
+                var orgId = await GetCurrentUserOrgId();
+
+                var facility = await _context.Facilities
+                    .FirstOrDefaultAsync(f => f.Id == id && f.OrganizationId == orgId);
+
+                if (facility == null)
+                    return NotFound(new { message = "Facility not found." });
+
+                var bookings = await _context.Bookings
+                    .Where(b => b.FacilityId == id &&
+                                (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Approved) &&
+                                b.EndTime > DateTime.UtcNow)
+                    .OrderBy(b => b.StartTime)
+                    .Select(b => new
+                    {
+                        b.Id,
+                        b.StartTime,
+                        b.EndTime,
+                        Status = b.Status.ToString()
+                    })
+                    .ToListAsync();
+
+                return Ok(bookings);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(503, new { message = "Database temporarily unavailable.", error = ex.Message });
+            }
+        }
+
         [HttpGet("available")]
         public async Task<IActionResult> GetAvailable(
             [FromQuery] DateTime date,
@@ -107,19 +129,16 @@ namespace SFBooking.Server.Controllers
             try
             {
                 var orgId = await GetCurrentUserOrgId();
-
                 var requestedStart = date.Date + startTime;
                 var requestedEnd = date.Date + endTime;
 
                 if (requestedEnd <= requestedStart)
                     return BadRequest(new { message = "End time must be after start time." });
 
-                // Get all active facilities in the organization
                 var allFacilities = await _context.Facilities
                     .Where(f => f.OrganizationId == orgId && f.IsActive)
                     .ToListAsync();
 
-                // Get facilities that have approved bookings overlapping the requested slot
                 var bookedFacilityIds = await _context.Bookings
                     .Where(b =>
                         b.Facility!.OrganizationId == orgId &&
@@ -132,10 +151,7 @@ namespace SFBooking.Server.Controllers
 
                 var result = allFacilities.Select(f => new
                 {
-                    f.Id,
-                    f.Name,
-                    f.Type,
-                    f.Capacity,
+                    f.Id, f.Name, f.Type, f.Capacity,
                     IsAvailable = !bookedFacilityIds.Contains(f.Id)
                 });
 
@@ -147,8 +163,6 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // POST: api/facilities
-        // Admin and Manager only - add a new facility
         [HttpPost]
         [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Create([FromBody] CreateFacilityDto dto)
@@ -157,20 +171,17 @@ namespace SFBooking.Server.Controllers
             {
                 if (string.IsNullOrWhiteSpace(dto.Name))
                     return BadRequest(new { message = "Facility name is required." });
-
                 if (string.IsNullOrWhiteSpace(dto.Type))
                     return BadRequest(new { message = "Facility type is required." });
-
                 if (dto.Capacity <= 0)
                     return BadRequest(new { message = "Capacity must be greater than 0." });
 
                 var orgId = await GetCurrentUserOrgId();
                 var currentUserId = GetCurrentUserId();
 
-                // Check if facility with same name already exists in org
                 var exists = await _context.Facilities
                     .AnyAsync(f => f.OrganizationId == orgId &&
-                                   f.Name.ToLower() == dto.Name.ToLower());
+                        f.Name.ToLower() == dto.Name.ToLower());
 
                 if (exists)
                     return BadRequest(new { message = "A facility with that name already exists." });
@@ -202,12 +213,8 @@ namespace SFBooking.Server.Controllers
 
                 return CreatedAtAction(nameof(GetById), new { id = facility.Id }, new
                 {
-                    facility.Id,
-                    facility.Name,
-                    facility.Type,
-                    facility.Capacity,
-                    facility.IsActive,
-                    facility.CreatedAt
+                    facility.Id, facility.Name, facility.Type,
+                    facility.Capacity, facility.IsActive, facility.CreatedAt
                 });
             }
             catch (Exception ex)
@@ -216,8 +223,6 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // PUT: api/facilities/{id}
-        // Admin and Manager only - edit a facility
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateFacilityDto dto)
@@ -233,14 +238,9 @@ namespace SFBooking.Server.Controllers
                 if (facility == null)
                     return NotFound(new { message = "Facility not found." });
 
-                if (!string.IsNullOrWhiteSpace(dto.Name))
-                    facility.Name = dto.Name;
-
-                if (!string.IsNullOrWhiteSpace(dto.Type))
-                    facility.Type = dto.Type;
-
-                if (dto.Capacity.HasValue && dto.Capacity > 0)
-                    facility.Capacity = dto.Capacity.Value;
+                if (!string.IsNullOrWhiteSpace(dto.Name)) facility.Name = dto.Name;
+                if (!string.IsNullOrWhiteSpace(dto.Type)) facility.Type = dto.Type;
+                if (dto.Capacity.HasValue && dto.Capacity > 0) facility.Capacity = dto.Capacity.Value;
 
                 await _context.SaveChangesAsync();
 
@@ -258,11 +258,8 @@ namespace SFBooking.Server.Controllers
 
                 return Ok(new
                 {
-                    facility.Id,
-                    facility.Name,
-                    facility.Type,
-                    facility.Capacity,
-                    facility.IsActive
+                    facility.Id, facility.Name, facility.Type,
+                    facility.Capacity, facility.IsActive
                 });
             }
             catch (Exception ex)
@@ -271,8 +268,6 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // DELETE: api/facilities/{id}
-        // Admin and Manager only - deactivate a facility
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Delete(int id)
@@ -288,17 +283,15 @@ namespace SFBooking.Server.Controllers
                 if (facility == null)
                     return NotFound(new { message = "Facility not found." });
 
-                // Check if facility has pending or approved bookings
                 var hasActiveBookings = await _context.Bookings
                     .AnyAsync(b => b.FacilityId == id &&
-                                   (b.Status == BookingStatus.Pending ||
-                                    b.Status == BookingStatus.Approved) &&
-                                   b.EndTime > DateTime.UtcNow);
+                        (b.Status == BookingStatus.Pending ||
+                         b.Status == BookingStatus.Approved) &&
+                        b.EndTime > DateTime.UtcNow);
 
                 if (hasActiveBookings)
                     return BadRequest(new { message = "Cannot delete a facility with active or pending bookings." });
 
-                // Soft delete - deactivate instead of permanently deleting
                 facility.IsActive = false;
                 await _context.SaveChangesAsync();
 
@@ -322,8 +315,6 @@ namespace SFBooking.Server.Controllers
             }
         }
 
-        // PUT: api/facilities/{id}/reactivate
-        // Admin and Manager only - reactivate a deactivated facility
         [HttpPut("{id}/reactivate")]
         [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Reactivate(int id)
