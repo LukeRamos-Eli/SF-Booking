@@ -24,7 +24,26 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     ));
 
 builder.Services.AddScoped<JwtService>();
-builder.Services.AddScoped<IEmailService, ConsoleEmailService>();
+// Picks a real email sender if one is configured: Gmail SMTP first (the
+// simpler option - just needs a Gmail account + app password, no third-party
+// signup), then SendGrid if that's set up instead. Falls back to the
+// console-log stub if neither is configured, so local dev keeps working
+// without needing real credentials.
+var gmailAddress = builder.Configuration["Gmail:Address"];
+var sendGridApiKey = builder.Configuration["SendGrid:ApiKey"];
+
+if (!string.IsNullOrWhiteSpace(gmailAddress))
+{
+    builder.Services.AddScoped<IEmailService, GmailSmtpEmailService>();
+}
+else if (!string.IsNullOrWhiteSpace(sendGridApiKey))
+{
+    builder.Services.AddScoped<IEmailService, SendGridEmailService>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailService, ConsoleEmailService>();
+}
 builder.Services.AddSingleton<LoginAttemptTracker>();
 
 // General throttle on the auth endpoints (login, register, forgot-password):
