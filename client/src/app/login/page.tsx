@@ -4,11 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { login, saveToken } from "@/services/auth.service";
+import { Eye, EyeOff, Lock, Mail, ArrowLeft, CalendarPlus } from "lucide-react";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -34,122 +38,143 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center bg-[#122E24] relative overflow-hidden">
-      {/* Decorative background circles, matching the reference composition */}
-      <div className="absolute -top-16 right-1/3 w-40 h-40 rounded-full bg-white/5" />
-      <div className="absolute top-24 right-10 w-72 h-72 rounded-full border border-white/10" />
-      <div className="absolute -bottom-24 left-10 w-64 h-64 rounded-full border border-white/10" />
+    <main className="relative min-h-screen overflow-hidden bg-[#202715] text-white flex items-center justify-center lg:justify-between px-4 sm:px-8 lg:px-16">
+      
+      {/* Background Glows */}
+      <div className="absolute left-[-150px] top-[-100px] h-[350px] w-[350px] rounded-full bg-green-700/20 blur-3xl animate-pulse" />
+      <div className="absolute bottom-[-150px] right-[-100px] h-[400px] w-[400px] rounded-full bg-yellow-400/10 blur-3xl animate-pulse" />
 
-      {/* Logo, top-left */}
-      <div className="absolute top-8 left-8 flex items-center gap-2 z-10">
-        <svg viewBox="0 0 24 24" className="w-6 h-6 text-[#8CB369]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-          <circle cx="5" cy="6" r="2" />
-          <circle cx="5" cy="18" r="2" />
-          <circle cx="12" cy="12" r="2" />
-          <circle cx="19" cy="6" r="2" />
-          <circle cx="19" cy="18" r="2" />
-          <path d="M6.6 7.2L10.6 11M6.6 16.8L10.6 13M13.4 11L17.4 7.2M13.4 13L17.4 16.8" />
-        </svg>
-        <div>
-          <p className="text-white text-sm font-semibold leading-none">SF Booking</p>
-          <p className="text-white/50 text-[10px] mt-0.5">Every room, on the record</p>
-        </div>
-      </div>
+      {/* Decorative Geometry */}
+      <div className="absolute left-8 top-8 h-28 w-28 rounded-full border border-white/10 hidden lg:block" />
+      <div className="absolute bottom-10 left-1/3 h-32 w-32 rounded-full border border-white/10 hidden lg:block" />
 
-      {/* Illustration side */}
-      <div className="hidden lg:flex flex-1 items-center justify-center relative z-10">
-        {/* Clouds */}
-        <div className="absolute top-10 left-1/4 flex">
-          <div className="w-10 h-10 rounded-full bg-white/20" />
-          <div className="w-14 h-14 rounded-full bg-white/20 -ml-4" />
-          <div className="w-8 h-8 rounded-full bg-white/20 -ml-4 mt-3" />
-        </div>
-        <div className="absolute top-24 right-16 flex">
-          <div className="w-7 h-7 rounded-full bg-white/15" />
-          <div className="w-10 h-10 rounded-full bg-white/15 -ml-3" />
-        </div>
-
-        {/* Plants flanking the card stack */}
-        <div className="absolute left-4 bottom-16 flex flex-col items-center">
-          <div className="w-14 h-14 rounded-full bg-[#8CB369]/40 mb-1" />
-          <div className="w-10 h-10 rounded-full bg-[#8CB369]/30 -mt-4 -ml-6" />
-          <div className="w-1 h-10 bg-white/20 mt-1" />
-        </div>
-        <div className="absolute right-6 bottom-24 flex flex-col items-center">
-          <div className="w-10 h-10 rounded-full bg-[#8CB369]/40 mb-1" />
-          <div className="w-1 h-14 bg-white/20 mt-1" />
-        </div>
-
-        <div className="bg-white/95 rounded-2xl p-6 w-64 shadow-2xl rotate-[-3deg]">
-          <div className="flex items-center gap-2 mb-4">
-            <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#1B4D3E]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-              <rect x="3" y="5" width="18" height="16" rx="2" />
-              <path d="M3 10h18M8 3v4M16 3v4" />
-            </svg>
-            <span className="text-sm font-semibold text-[#1F2937]">Room 301</span>
+      {/* Logo & Navigation */}
+      <div className="absolute top-8 left-6 sm:left-8 flex items-center gap-6 z-20">
+        <Link 
+          href="/" 
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition group"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          Back
+        </Link>
+        <div className="h-4 w-px bg-white/20 hidden sm:block" />
+        <div className="hidden sm:flex items-center gap-2">
+          <CalendarPlus className="w-5 h-5 text-yellow-400" />
+          <div>
+            <p className="text-white text-xs font-semibold leading-none tracking-wide">SF BOOKING</p>
+            <p className="text-white/40 text-[9px] mt-0.5">Smart Facility Management</p>
           </div>
-          <div className="h-2 w-3/4 bg-[#E9ECF1] rounded mb-2" />
-          <div className="h-2 w-1/2 bg-[#E9ECF1] rounded mb-4" />
-          <span className="inline-block text-xs bg-[#D1FAE5] text-[#047857] px-3 py-1 rounded-full font-medium">Approved</span>
-        </div>
-        <div className="bg-white/90 rounded-2xl p-5 w-48 shadow-2xl absolute translate-x-28 translate-y-16 rotate-[4deg]">
-          <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#8CB369] mb-3" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-            <rect x="4" y="3" width="16" height="18" rx="1" />
-            <path d="M9 8h1M14 8h1M9 12h1M14 12h1" />
-          </svg>
-          <div className="h-2 w-2/3 bg-[#E9ECF1] rounded mb-2" />
-          <div className="h-2 w-1/2 bg-[#E9ECF1] rounded" />
-        </div>
-        {/* Third floating card - small analytics/pie chart mockup */}
-        <div className="bg-white/90 rounded-2xl p-4 w-36 shadow-2xl absolute -translate-x-32 translate-y-28 rotate-[-6deg]">
-          <div
-            className="w-14 h-14 rounded-full mx-auto mb-2"
-            style={{ background: "conic-gradient(#8CB369 0deg 140deg, #F2A65A 140deg 230deg, #5B8CD6 230deg 360deg)" }}
-          />
-          <div className="h-1.5 w-full bg-[#E9ECF1] rounded mb-1.5" />
-          <div className="h-1.5 w-2/3 bg-[#E9ECF1] rounded" />
         </div>
       </div>
 
-      {/* Frosted glass card */}
-      <div className="w-full lg:w-[540px] flex items-center justify-center p-6 lg:p-14 relative z-10">
-        <div className="w-full max-w-[460px] bg-white/10 backdrop-blur-xl border border-white/15 rounded-3xl shadow-2xl p-8">
-          <h2 className="text-2xl font-semibold text-white pb-2 border-b-2 border-[#8CB369] inline-block mb-1">
-            Login
-          </h2>
-          <p className="text-white/60 text-sm mb-8 mt-3">Welcome onboard with us!</p>
+      {/* Left Column: Polished Mockup Illustrations */}
+      <div className="hidden lg:flex flex-1 items-center justify-center relative z-10 max-w-2xl h-full pr-8">
+        <div className="absolute top-12 left-1/4 flex gap-1 opacity-40">
+          <div className="w-8 h-8 rounded-full bg-green-600/20 blur-sm" />
+          <div className="w-12 h-12 rounded-full bg-green-600/20 blur-sm -ml-3" />
+        </div>
+
+        {/* Component Display 1 */}
+        <div className="bg-white/95 rounded-2xl p-6 w-64 shadow-2xl rotate-[-3deg] border border-white/20 transition-all hover:rotate-0 hover:scale-105 duration-300">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-1.5 rounded-lg bg-[#202715]/10">
+              <CalendarPlus className="w-4 h-4 text-[#202715]" />
+            </div>
+            <span className="text-xs font-bold text-gray-800">Seminar Hall B</span>
+          </div>
+          <div className="h-2 w-3/4 bg-gray-200 rounded mb-2" />
+          <div className="h-2 w-1/2 bg-gray-200 rounded mb-4" />
+          <span className="inline-block text-[10px] bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold">
+            Approved
+          </span>
+        </div>
+
+        {/* Component Display 2 */}
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 w-48 shadow-2xl absolute translate-x-28 translate-y-16 rotate-[4deg] border border-white/10 transition-all hover:rotate-0 hover:scale-105 duration-300">
+          <div className="h-2 w-2/3 bg-white/30 rounded mb-2" />
+          <div className="h-2 w-1/2 bg-white/20 rounded mb-4" />
+          <div className="w-full h-1 bg-white/10 rounded overflow-hidden">
+            <div className="w-2/3 h-full bg-[#D99A3F]" />
+          </div>
+        </div>
+
+        {/* Component Display 3 */}
+        <div className="bg-white/90 rounded-2xl p-4 w-36 shadow-2xl absolute -translate-x-32 translate-y-28 rotate-[-6deg] transition-all hover:rotate-0 duration-300">
+          <div
+            className="w-12 h-12 rounded-full mx-auto mb-3 shadow-inner"
+            style={{ background: "conic-gradient(#D99A3F 0deg 160deg, #4b5e30 160deg 280deg, #d1d5db 280deg 360deg)" }}
+          />
+          <div className="h-1.5 w-full bg-gray-200 rounded mb-1.5" />
+          <div className="h-1.5 w-2/3 bg-gray-200 rounded" />
+        </div>
+      </div>
+
+      {/* Right Column: Premium Form Interface */}
+      <div className="w-full lg:w-200 flex items-center justify-center relative z-10 lg:ml-auto lg:mr-16">
+        <div className="w-full max-w-md bg-white/8 backdrop-blur-xl border border-white/5 rounded-3xl p-8 sm:p-10 shadow-2xl">
+          
+          {/* Form Header */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-black tracking-tight mb-2">Welcome Back</h2>
+            <p className="text-gray-300 text-sm">Please log in to manage your spaces.</p>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email Address */}
             <div>
-              <label className="block text-xs font-medium text-white/70 mb-1.5">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#8CB369] focus:ring-2 focus:ring-[#8CB369]/25 transition"
-              />
+              <label className="block text-xs font-semibold text-gray-300 mb-2 tracking-wide uppercase">Email Address</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Mail className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  required
+                  disabled={loading}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@university.edu"
+                  className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder:text-gray-500 outline-none focus:border-[#D99A3F] focus:ring-2 focus:ring-[#D99A3F]/20 transition disabled:opacity-50"
+                />
+              </div>
             </div>
+
+            {/* Password Field */}
             <div>
-              <label className="block text-xs font-medium text-white/70 mb-1.5">Password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#8CB369] focus:ring-2 focus:ring-[#8CB369]/25 transition"
-              />
-              <div className="text-right mt-2">
-                <Link href="/forgot-password" className="text-xs text-white/60 hover:text-[#8CB369] transition">
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5 tracking-wide uppercase">Password</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Lock className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  disabled={loading}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-12 py-3 text-sm text-white placeholder:text-gray-500 outline-none focus:border-[#D99A3F] focus:ring-2 focus:ring-[#D99A3F]/20 transition disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-white transition"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+
+              {/* Forgot Password Link - Now Cleanly Placed Below the Box */}
+              <div className="flex justify-end mt-2">
+                <Link href="/forgot-password" className="text-xs text-[#D99A3F] hover:underline font-medium">
                   Forgot Password?
                 </Link>
               </div>
             </div>
 
             {error && (
-              <div className="border border-[#F87171]/30 bg-[#F87171]/10 rounded-lg px-4 py-3 text-sm text-[#FCA5A5]">
+              <div className="border border-red-500/20 bg-red-500/10 rounded-xl px-4 py-3 text-xs text-red-300 font-medium tracking-wide">
                 {error}
               </div>
             )}
@@ -157,20 +182,21 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#8CB369] text-[#122E24] rounded-full py-3.5 text-sm font-bold tracking-wide hover:bg-[#9CC17F] transition disabled:opacity-50"
+              className="w-full bg-[#D99A3F] text-white rounded-xl py-3.5 text-sm font-bold tracking-wide hover:bg-[#E8A948] transition active:scale-[0.99] disabled:opacity-50 shadow-lg shadow-[#D99A3F]/10 uppercase mt-2"
             >
-              {loading ? "SIGNING IN…" : "LOGIN"}
+              {loading ? "Signing in…" : "Sign In"}
             </button>
           </form>
 
-          <p className="text-sm text-white/60 mt-6 text-center">
+          <div className="mt-8 text-center text-sm text-gray-400">
             New to SF Booking?{" "}
-            <Link href="/register" className="text-[#8CB369] font-semibold hover:underline">
+            <Link href="/register" className="text-[#D99A3F] font-bold hover:underline ml-1">
               Register Here
             </Link>
-          </p>
+          </div>
+
         </div>
       </div>
-    </div>
+    </main>
   );
 }
