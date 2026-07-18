@@ -33,6 +33,22 @@ export async function getFacilities(): Promise<Facility[]> {
   return data;
 }
 
+export interface FacilityBookingSlot {
+  id: number;
+  startTime: string;
+  endTime: string;
+  status: string;
+}
+
+export async function getFacilityBookings(facilityId: number): Promise<FacilityBookingSlot[]> {
+  const response = await fetch(`${API_URL}/api/facilities/${facilityId}/bookings`, {
+    headers: authHeaders(),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || "Failed to load facility bookings");
+  return data;
+}
+
 export async function createFacility(input: FacilityInput): Promise<Facility> {
   const response = await fetch(`${API_URL}/api/facilities`, {
     method: "POST",

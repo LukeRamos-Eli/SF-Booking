@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isLoggedIn } from "@/services/auth.service";
-import { getFacilities, Facility } from "@/services/facilities.service";
+import { getFacilities, getFacilityBookings, Facility, FacilityBookingSlot } from "@/services/facilities.service";
 import { createBooking } from "@/services/bookings.service";
 import StudentTopbar from "@/components/StudentTopbar";
 import StudentSidebar from "@/components/StudentSidebar";
-import Badge from "@/components/Badge";
+import Badge, { statusColor } from "@/components/Badge";
 import { SkeletonCards } from "@/components/Skeleton";
 import { CalendarPlusIcon } from "@/components/icons";
 
@@ -24,6 +24,9 @@ export default function StudentFacilitiesPage() {
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  const [existingBookings, setExistingBookings] = useState<FacilityBookingSlot[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn()) {
@@ -42,11 +45,22 @@ export default function StudentFacilitiesPage() {
     })();
   }, [router]);
 
-  function openBooking(f: Facility) {
+  async function openBooking(f: Facility) {
     setBooking(f);
     setForm(EMPTY_FORM);
     setFormError("");
     setDone(false);
+    setExistingBookings([]);
+    setLoadingBookings(true);
+    try {
+      const slots = await getFacilityBookings(f.id);
+      setExistingBookings(slots);
+    } catch {
+      // Non-critical - the booking form still works even if this fails,
+      // it just won't show the "already taken" reference list.
+    } finally {
+      setLoadingBookings(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -71,6 +85,16 @@ export default function StudentFacilitiesPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function formatRange(start: string, end: string) {
+    const s = new Date(start);
+    const e = new Date(end);
+    const sameDay = s.toDateString() === e.toDateString();
+    const dateStr = s.toLocaleDateString([], { month: "short", day: "numeric" });
+    const startStr = s.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const endStr = e.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return sameDay ? `${dateStr}, ${startStr} – ${endStr}` : `${dateStr} ${startStr} – ${e.toLocaleDateString([], { month: "short", day: "numeric" })} ${endStr}`;
   }
 
   return (
@@ -125,9 +149,9 @@ export default function StudentFacilitiesPage() {
 
       {booking && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-20 px-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-7 shadow-xl">
+          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-xl overflow-hidden">
             {done ? (
-              <div>
+              <div className="p-7">
                 <h2 className="text-lg font-semibold text-[#1F2937] mb-2">Request submitted</h2>
                 <p className="text-sm text-[#6B7280] mb-6">
                   Your booking for {booking.name} is pending approval. You can track it from My bookings.
@@ -140,60 +164,93 @@ export default function StudentFacilitiesPage() {
                 </button>
               </div>
             ) : (
-              <>
-                <h2 className="text-lg font-semibold text-[#1F2937] mb-1">Book {booking.name}</h2>
-                <p className="text-sm text-[#8A93A0] mb-5">
-                  {booking.type} · Capacity {booking.capacity}
-                </p>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr]">
+                {/* Left: existing bookings for this facility, so the user isn't guessing */}
+                <div className="bg-[#F3F5F8] p-6 border-r border-[#EEF0F3]">
+                  <h3 className="text-sm font-semibold text-[#1F2937] mb-1">Already reserved</h3>
+                  <p className="text-xs text-[#8A93A0] mb-4">{booking.name} · upcoming Pending/Approved slots</p>
+
+                  {loadingBookings ? (
+                    <div className="space-y-2">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-12 rounded-lg bg-[#E9ECF1] animate-pulse" />
+                      ))}
+                    </div>
+                  ) : existingBookings.length === 0 ? (
+                    <p className="text-xs text-[#8A93A0]">No upcoming reservations — the whole calendar is open.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {existingBookings.map((slot) => (
+                        <div
+                          key={slot.id}
+                          className="bg-white rounded-lg px-3 py-2.5 border border-[#EEF0F3] flex items-center justify-between gap-2"
+                        >
+                          <span className="text-xs text-[#374151]">{formatRange(slot.startTime, slot.endTime)}</span>
+                          <Badge color={statusColor(slot.status)} tone="soft" className="shrink-0">
+                            {slot.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: the booking form itself */}
+                <div className="p-7">
+                  <h2 className="text-lg font-semibold text-[#1F2937] mb-1">Book {booking.name}</h2>
+                  <p className="text-sm text-[#8A93A0] mb-5">
+                    {booking.type} · Capacity {booking.capacity}
+                  </p>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Start</label>
+                        <input
+                          type="datetime-local"
+                          value={form.startTime}
+                          onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
+                          className="w-full border border-[#E5E9EF] rounded-lg px-3 py-2.5 text-sm text-[#1F2937] placeholder:text-[#9AA3AF] outline-none focus:ring-2 focus:ring-[#8CB369]/30"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-[#6B7280] mb-1.5">End</label>
+                        <input
+                          type="datetime-local"
+                          value={form.endTime}
+                          onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
+                          className="w-full border border-[#E5E9EF] rounded-lg px-3 py-2.5 text-sm text-[#1F2937] placeholder:text-[#9AA3AF] outline-none focus:ring-2 focus:ring-[#8CB369]/30"
+                        />
+                      </div>
+                    </div>
                     <div>
-                      <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Start</label>
+                      <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Purpose</label>
                       <input
-                        type="datetime-local"
-                        value={form.startTime}
-                        onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
+                        value={form.purpose}
+                        onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value }))}
+                        placeholder="Study session, practice, event…"
                         className="w-full border border-[#E5E9EF] rounded-lg px-3 py-2.5 text-sm text-[#1F2937] placeholder:text-[#9AA3AF] outline-none focus:ring-2 focus:ring-[#8CB369]/30"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-[#6B7280] mb-1.5">End</label>
-                      <input
-                        type="datetime-local"
-                        value={form.endTime}
-                        onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
-                        className="w-full border border-[#E5E9EF] rounded-lg px-3 py-2.5 text-sm text-[#1F2937] placeholder:text-[#9AA3AF] outline-none focus:ring-2 focus:ring-[#8CB369]/30"
-                      />
+                    {formError && <p className="text-xs text-[#B23A3A]">{formError}</p>}
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setBooking(null)}
+                        className="flex-1 py-2.5 rounded-lg border border-[#E5E9EF] text-sm font-medium text-[#374151] hover:bg-[#F3F5F8] transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={submitting}
+                        className="flex-1 py-2.5 rounded-lg bg-[#8CB369] text-white text-sm font-medium hover:bg-[#739955] transition disabled:opacity-50"
+                      >
+                        {submitting ? "Submitting…" : "Submit request"}
+                      </button>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Purpose</label>
-                    <input
-                      value={form.purpose}
-                      onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value }))}
-                      placeholder="Study session, practice, event…"
-                      className="w-full border border-[#E5E9EF] rounded-lg px-3 py-2.5 text-sm text-[#1F2937] placeholder:text-[#9AA3AF] outline-none focus:ring-2 focus:ring-[#8CB369]/30"
-                    />
-                  </div>
-                  {formError && <p className="text-xs text-[#B23A3A]">{formError}</p>}
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setBooking(null)}
-                      className="flex-1 py-2.5 rounded-lg border border-[#E5E9EF] text-sm font-medium text-[#374151] hover:bg-[#F3F5F8] transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="flex-1 py-2.5 rounded-lg bg-[#8CB369] text-white text-sm font-medium hover:bg-[#739955] transition disabled:opacity-50"
-                    >
-                      {submitting ? "Submitting…" : "Submit request"}
-                    </button>
-                  </div>
-                </form>
-              </>
+                  </form>
+                </div>
+              </div>
             )}
           </div>
         </div>
