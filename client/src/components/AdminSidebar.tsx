@@ -26,6 +26,7 @@ export default function AdminSidebar() {
   return (
     <aside className="w-64 shrink-0 min-h-screen bg-white border-r border-[#EEF0F3] flex flex-col justify-between py-8">
       <div>
+        {/* Branding Header */}
         <div className="px-7 mb-10">
           <div className="flex items-center gap-2">
             <svg viewBox="0 0 24 24" className="w-6 h-6 text-[#8CB369]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
@@ -36,26 +37,31 @@ export default function AdminSidebar() {
               <circle cx="19" cy="18" r="2" />
               <path d="M6.6 7.2L10.6 11M6.6 16.8L10.6 13M13.4 11L17.4 7.2M13.4 13L17.4 16.8" />
             </svg>
-            <span className="text-xl font-semibold">
+            <span className="text-xl font-semibold select-none">
               <span className="text-[#1F2937]">SF </span>
               <span className="text-[#8CB369]">Booking</span>
             </span>
           </div>
-          <p className="text-xs text-[#9AA3AF] mt-1 ml-8">
+          <p className="text-xs text-[#9AA3AF] mt-1 ml-8 font-medium">
             {user?.organizationName ?? "Organization"}
           </p>
         </div>
 
+        {/* Main Navigation Links */}
         <nav className="px-4 space-y-1">
           {LINKS.map((link) => {
-            const active = pathname?.startsWith(link.href);
+            // Standard strict equality match for dashboard to avoid matching nested layouts like /profile
+            const active = link.href === "/admin/dashboard" 
+              ? pathname === link.href 
+              : pathname?.startsWith(link.href);
+
             return (
               <Link
                 key={link.href}
                 href={link.href}
                 className={`block px-4 py-3 rounded-xl text-sm font-medium transition ${
                   active
-                    ? "bg-[#1B4D3E] text-white"
+                    ? "bg-[#1B4D3E] text-white shadow-sm"
                     : "text-[#374151] hover:bg-[#F3F5F8]"
                 }`}
               >
@@ -66,10 +72,15 @@ export default function AdminSidebar() {
         </nav>
       </div>
 
+      {/* Footer System Navigation */}
       <div className="px-4 space-y-1">
         <Link
           href="/admin/dashboard/profile"
-          className="block px-4 py-3 rounded-xl text-sm font-medium text-[#374151] hover:bg-[#F3F5F8] transition"
+          className={`block px-4 py-3 rounded-xl text-sm font-medium transition ${
+            pathname === "/admin/dashboard/profile"
+              ? "bg-[#1B4D3E] text-white shadow-sm"
+              : "text-[#374151] hover:bg-[#F3F5F8]"
+          }`}
         >
           Settings
         </Link>

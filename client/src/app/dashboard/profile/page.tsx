@@ -1,57 +1,61 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { isLoggedIn } from '@/services/auth.service';
-import { getMyProfile, updateMyProfile, changePassword, UserProfile } from '@/services/users.service';
-import Link from 'next/link';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { isLoggedIn } from "@/services/auth.service";
+import { getMyProfile, updateMyProfile, changePassword, UserProfile } from "@/services/users.service";
+import StudentTopbar from "@/components/StudentTopbar";
+import StudentSidebar from "@/components/StudentSidebar";
 
-
-export default function AdminProfilePage() {
+export default function StudentProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [loadError, setLoadError] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [loadError, setLoadError] = useState("");
 
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [profileMsg, setProfileMsg] = useState('');
-  const [profileErr, setProfileErr] = useState('');
-  const [passwordMsg, setPasswordMsg] = useState('');
-  const [passwordErr, setPasswordErr] = useState('');
+  const [profileMsg, setProfileMsg] = useState("");
+  const [profileErr, setProfileErr] = useState("");
+  const [passwordMsg, setPasswordMsg] = useState("");
+  const [passwordErr, setPasswordErr] = useState("");
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn()) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
-
-    getMyProfile()
-      .then((data) => {
+    (async () => {
+      try {
+        const data = await getMyProfile();
         setProfile(data);
         setFullName(data.fullName);
         setEmail(data.email);
-      })
-      .catch((err) => setLoadError(err.message));
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : "Failed to load profile.");
+      }
+    })();
   }, [router]);
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setProfileMsg('');
-    setProfileErr('');
+    setProfileMsg("");
+    setProfileErr("");
     setSavingProfile(true);
     try {
       const updated = await updateMyProfile(fullName, email);
       setProfile(updated);
-      setProfileMsg('Profile updated successfully.');
+      setProfileMsg("Profile updated successfully.");
+      setEditing(false);
     } catch (err: unknown) {
-      setProfileErr(err instanceof Error ? err.message : 'Update failed');
+      setProfileErr(err instanceof Error ? err.message : "Update failed");
     } finally {
       setSavingProfile(false);
     }
@@ -59,145 +63,175 @@ export default function AdminProfilePage() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPasswordMsg('');
-    setPasswordErr('');
-
+    setPasswordMsg("");
+    setPasswordErr("");
     if (newPassword !== confirmPassword) {
-      setPasswordErr('New passwords do not match.');
+      setPasswordErr("New passwords do not match.");
       return;
     }
-
     setSavingPassword(true);
     try {
       await changePassword(currentPassword, newPassword, confirmPassword);
-      setPasswordMsg('Password changed successfully.');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      setPasswordMsg("Password changed successfully.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
     } catch (err: unknown) {
-      setPasswordErr(err instanceof Error ? err.message : 'Password change failed');
+      setPasswordErr(err instanceof Error ? err.message : "Password change failed");
     } finally {
       setSavingPassword(false);
     }
   };
 
-  if (loadError) return <p className="p-8 text-red-600">{loadError}</p>;
-  if (!profile) return <p className="p-8 text-gray-500">Loading...</p>;
-
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <Link href="/dashboard" className="text-sm text-blue-600 hover:underline inline-block">
-          ← Back to Dashboard
-        </Link>
-
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">My Profile</h1>
-          <p className="text-gray-500 mt-1">
-            {profile.role} · {profile.organizationName}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Profile Information</h2>
-          <form onSubmit={handleProfileSave} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+    <div className="h-screen bg-[#F3F5F8] flex overflow-hidden">
+      <StudentSidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <StudentTopbar />
+        
+        <main className="flex-1 px-12 py-10 overflow-y-auto flex justify-center">
+          {loadError ? (
+            <div className="border border-[#B23A3A]/30 bg-[#B23A3A]/10 rounded-xl px-4 py-3 text-sm text-[#B23A3A] max-w-3xl w-full h-fit mt-10">
+              {loadError}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
+          ) : !profile ? (
+            <p className="text-sm text-[#8A93A0] text-center pt-10">Loading...</p>
+          ) : (
+            /* Centered Layout Wrapper */
+            <div className="w-full max-w-3xl flex flex-col mt-4 space-y-6">
+              
+              <h1 className="text-3xl font-bold text-[#374151] tracking-tight self-start">
+                {profile.fullName}
+              </h1>
 
-            {profileErr && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
-                {profileErr}
+              {/* Account Information Card */}
+              <div className="bg-[#EAECEF] rounded-2xl p-8 shadow-sm w-full">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-bold text-[#374151]">Account Information</h2>
+                  {!editing && (
+                    <button
+                      onClick={() => setEditing(true)}
+                      className="text-sm font-semibold text-green-700 hover:underline"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+
+                {!editing ? (
+                  <div className="divide-y divide-gray-300/50">
+                    <div className="flex justify-between items-center py-4">
+                      <span className="text-sm font-medium text-[#6B7280]">Full Name</span>
+                      <span className="text-sm font-bold text-[#1F2937]">{profile.fullName}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-4">
+                      <span className="text-sm font-medium text-[#6B7280]">Email</span>
+                      <span className="text-sm font-bold text-[#1F2937] underline">{profile.email}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-4">
+                      <span className="text-sm font-medium text-[#6B7280]">Organization</span>
+                      <span className="text-sm font-bold text-[#1F2937]">{profile.organizationName}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-4">
+                      <span className="text-sm font-medium text-[#6B7280]">Status</span>
+                      <span
+                        className={`text-xs font-bold px-6 py-1.5 rounded-full text-white ${
+                          profile.status === "Active" ? "bg-[#005A1C]" : "bg-gray-400"
+                        }`}
+                      >
+                        {profile.status}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleProfileSave} className="space-y-3 pt-2">
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="w-full bg-white border-0 rounded-lg px-4 py-2.5 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-green-600 shadow-sm"
+                      required
+                    />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-white border-0 rounded-lg px-4 py-2.5 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-green-600 shadow-sm"
+                      required
+                    />
+                    {profileErr && <p className="text-xs text-red-600">{profileErr}</p>}
+                    {profileMsg && <p className="text-xs text-green-700">{profileMsg}</p>}
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        type="submit"
+                        disabled={savingProfile}
+                        className="bg-green-700 text-white rounded-full px-5 py-2 text-xs font-bold hover:bg-green-800 disabled:opacity-50"
+                      >
+                        {savingProfile ? "Saving..." : "Save Changes"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditing(false);
+                          setFullName(profile.fullName);
+                          setEmail(profile.email);
+                        }}
+                        className="text-xs font-semibold text-[#6B7280] px-3 py-2 hover:underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
-            )}
-            {profileMsg && (
-              <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-3 py-2">
-                {profileMsg}
+
+              {/* Change Password Card */}
+              <div className="bg-[#EAECEF] rounded-2xl p-8 shadow-sm w-full">
+                <h2 className="text-lg font-bold text-[#374151] mb-6">Change Password</h2>
+                <form onSubmit={handlePasswordChange} className="flex flex-col items-center gap-4 w-full">
+                  <div className="w-full max-w-md space-y-3">
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Current Password"
+                      className="w-full bg-white border-0 rounded-lg px-4 py-3 text-xs text-[#1F2937] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 shadow-sm"
+                      required
+                    />
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="New Password"
+                      className="w-full bg-white border-0 rounded-lg px-4 py-3 text-xs text-[#1F2937] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 shadow-sm"
+                      required
+                    />
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm New Password"
+                      className="w-full bg-white border-0 rounded-lg px-4 py-3 text-xs text-[#1F2937] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 shadow-sm"
+                      required
+                    />
+
+                    {passwordErr && <p className="text-xs text-red-600 text-center">{passwordErr}</p>}
+                    {passwordMsg && <p className="text-xs text-green-700 text-center">{passwordMsg}</p>}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={savingPassword}
+                    className="bg-[#7E8287] text-white rounded-xl px-12 py-3 text-xs font-bold hover:bg-[#6C7075] disabled:opacity-50 mt-3 transition shadow-sm"
+                  >
+                    {savingPassword ? "Updating..." : "Update Password"}
+                  </button>
+                </form>
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={savingProfile}
-              className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {savingProfile ? 'Saving...' : 'Save Changes'}
-            </button>
-          </form>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Change Password</h2>
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="At least 8 characters"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-
-            {passwordErr && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
-                {passwordErr}
-              </div>
-            )}
-            {passwordMsg && (
-              <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-3 py-2">
-                {passwordMsg}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={savingPassword}
-              className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {savingPassword ? 'Updating...' : 'Update Password'}
-            </button>
-          </form>
-        </div>
+          )}
+        </main>
       </div>
     </div>
   );
