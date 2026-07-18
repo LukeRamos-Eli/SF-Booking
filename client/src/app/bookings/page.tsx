@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isLoggedIn } from "@/services/auth.service";
-import { getMyBookings, cancelBooking, updateBooking, Booking } from "@/services/bookings.service";
+import { getMyBookings, cancelBooking, updateBooking, getDisplayStatus, Booking } from "@/services/bookings.service";
 import StudentTopbar from "@/components/StudentTopbar";
 import StudentSidebar from "@/components/StudentSidebar";
 import Badge, { statusColor } from "@/components/Badge";
@@ -130,7 +130,9 @@ export default function StudentBookingsPage() {
                   No bookings yet — head to Facilities to request one.
                 </p>
               ) : (
-                paged.map((b) => (
+                paged.map((b) => {
+                  const displayStatus = getDisplayStatus(b);
+                  return (
                   <div
                     key={b.id}
                     className="grid grid-cols-[1.2fr_1.4fr_1.6fr_1.6fr] items-center px-6 py-5 border-b border-[#F3F5F8] last:border-0"
@@ -142,8 +144,8 @@ export default function StudentBookingsPage() {
                       {new Date(b.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                     <div className="flex items-center gap-2">
-                      <Badge color={statusColor(b.status)}>{b.status}</Badge>
-                      {b.status === "Pending" && (
+                      <Badge color={statusColor(displayStatus)}>{displayStatus}</Badge>
+                      {b.status === "Pending" && displayStatus !== "Expired" && (
                         <button
                           onClick={() => openEdit(b)}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#EEF0F3] text-[#6B7280] hover:bg-[#E5E9EF] transition"
@@ -152,7 +154,9 @@ export default function StudentBookingsPage() {
                           Edit
                         </button>
                       )}
-                      {(b.status === "Pending" || b.status === "Approved") && (
+                      {(b.status === "Pending" || b.status === "Approved") &&
+                        displayStatus !== "Expired" &&
+                        displayStatus !== "Completed" && (
                         <button
                           onClick={() => handleCancel(b.id)}
                           disabled={busyId === b.id}
@@ -164,7 +168,8 @@ export default function StudentBookingsPage() {
                       )}
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
 
               <Pagination page={page} totalPages={totalPages} onChange={setPage} />

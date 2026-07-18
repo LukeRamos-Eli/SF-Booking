@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { isLoggedIn } from "@/services/auth.service";
 import { getPendingUsers } from "@/services/admin.service";
 import { getFacilities } from "@/services/facilities.service";
-import { getAllBookings } from "@/services/bookings.service";
+import { getAllBookings, getDisplayStatus } from "@/services/bookings.service";
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminTopbar from "@/components/AdminTopbar";
 import StatCard from "@/components/StatCard";
@@ -34,7 +34,7 @@ export default function AdminDashboardPage() {
           getFacilities(),
         ]);
         setTotalBookings(bookings.length);
-        setPendingApproval(bookings.filter((b) => b.status === "Pending").length);
+        setPendingApproval(bookings.filter((b) => getDisplayStatus(b) === "Pending").length);
         setPendingAccounts(pendingUsers.length);
         setTotalFacilities(facilities.length);
       } catch (err) {

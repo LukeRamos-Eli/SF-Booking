@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isLoggedIn } from "@/services/auth.service";
 import { useCurrentUser } from "@/components/useCurrentUser";
-import { getAllBookings, Booking } from "@/services/bookings.service";
+import { getAllBookings, getDisplayStatus, Booking } from "@/services/bookings.service";
 import { approveBooking, rejectBooking, overrideBooking } from "@/services/approvals.service";
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminTopbar from "@/components/AdminTopbar";
@@ -149,7 +149,9 @@ export default function AdminApprovalsPage() {
               {paged.length === 0 ? (
                 <p className="text-sm text-[#8A93A0] px-6 py-6">No bookings match this filter.</p>
               ) : (
-                paged.map((b) => (
+                paged.map((b) => {
+                  const displayStatus = getDisplayStatus(b);
+                  return (
                   <div
                     key={b.id}
                     className="grid grid-cols-[1.1fr_1.5fr_1.4fr_1fr_1.6fr] items-center px-6 py-5 border-b border-[#F3F5F8] last:border-0"
@@ -168,14 +170,14 @@ export default function AdminApprovalsPage() {
 
                     {/* Read-only status badge - deliberately its own column, separate from actions */}
                     <div>
-                      <Badge color={statusColor(b.status)} tone="soft">
-                        {b.status}
+                      <Badge color={statusColor(displayStatus)} tone="soft">
+                        {displayStatus}
                       </Badge>
                     </div>
 
                     {/* Clickable actions - visually distinct pill buttons, own column */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      {b.status === "Pending" && (
+                      {b.status === "Pending" && displayStatus === "Pending" && (
                         <>
                           <button
                             onClick={() => handleApprove(b.id)}
@@ -193,7 +195,7 @@ export default function AdminApprovalsPage() {
                         </>
                       )}
 
-                      {b.status === "Approved" && isAdmin && (
+                      {b.status === "Approved" && displayStatus === "Approved" && isAdmin && (
                         <button
                           onClick={() => openRemarks(b, "override")}
                           className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#F2A65A] text-white hover:bg-[#DC9147] transition"
@@ -202,12 +204,20 @@ export default function AdminApprovalsPage() {
                         </button>
                       )}
 
-                      {(b.status === "Rejected" || (b.status === "Approved" && !isAdmin)) && (
-                        <span className="text-xs text-[#9AA3AF] italic">No actions available</span>
+                      {(displayStatus === "Rejected" ||
+                        displayStatus === "Expired" ||
+                        displayStatus === "Completed" ||
+                        (displayStatus === "Approved" && !isAdmin)) && (
+                        <span className="text-xs text-[#9AA3AF] italic">
+                          {displayStatus === "Expired"
+                            ? "Window closed — no longer actionable"
+                            : "No actions available"}
+                        </span>
                       )}
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
 
               <Pagination page={page} totalPages={totalPages} onChange={setPage} />

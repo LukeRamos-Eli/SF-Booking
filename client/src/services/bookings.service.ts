@@ -90,3 +90,22 @@ export async function updateBooking(
   if (!response.ok) throw new Error(data.message || "Failed to update booking");
   return data;
 }
+
+// Computes the status a booking should actually be displayed as, without
+// ever touching the stored value in the database. An Approved booking whose
+// end time has passed reads as "Completed" - it happened, it's just over.
+// A Pending booking whose start time has passed reads as "Expired" - nobody
+// ever acted on it, which is different from an actual Rejected decision
+// (which requires an admin's remarks) and shouldn't be confused with one.
+export function getDisplayStatus(
+  booking: Pick<Booking, "status" | "startTime" | "endTime">
+): string {
+  const now = new Date();
+  if (booking.status === "Approved" && new Date(booking.endTime) < now) {
+    return "Completed";
+  }
+  if (booking.status === "Pending" && new Date(booking.startTime) < now) {
+    return "Expired";
+  }
+  return booking.status;
+}
