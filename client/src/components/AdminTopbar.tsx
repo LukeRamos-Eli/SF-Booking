@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { logout } from "@/services/auth.service";
 import { useCurrentUser } from "./useCurrentUser";
 import Avatar from "./Avatar";
-import { SearchIcon, ChevronDownIcon } from "./icons";
+import { ChevronDownIcon } from "./icons";
 
-export default function AdminTopbar({ searchPlaceholder = "Search" }: { searchPlaceholder?: string }) {
+export default function AdminTopbar() {
   const user = useCurrentUser();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -18,17 +18,7 @@ export default function AdminTopbar({ searchPlaceholder = "Search" }: { searchPl
   }
 
   return (
-    <header className="h-20 border-b border-[#EEF0F3] bg-white flex items-center justify-between px-8 gap-6">
-      <div className="flex-1 max-w-xl">
-        <div className="relative">
-          <SearchIcon className="w-4 h-4 text-[#9AA3AF] absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder={searchPlaceholder}
-            className="w-full bg-[#F3F5F8] rounded-full pl-11 pr-4 py-2.5 text-sm text-[#374151] placeholder:text-[#9AA3AF] outline-none focus:ring-2 focus:ring-[#8CB369]/30"
-          />
-        </div>
-      </div>
+    <header className="h-20 border-b border-[#EEF0F3] bg-white flex items-center justify-end px-8 gap-6">
 
       <div className="relative">
         <button

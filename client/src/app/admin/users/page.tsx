@@ -15,7 +15,7 @@ import AdminTopbar from "@/components/AdminTopbar";
 import Badge, { statusColor } from "@/components/Badge";
 import Pagination from "@/components/Pagination";
 import { SkeletonTableRows } from "@/components/Skeleton";
-import { FunnelIcon, ChevronDownIcon } from "@/components/icons";
+import { FunnelIcon, ChevronDownIcon, SearchIcon } from "@/components/icons";
 
 const FILTERS = ["All", "Pending", "Active", "Inactive"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -26,6 +26,7 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [filter, setFilter] = useState<Filter>("All");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -91,10 +92,22 @@ export default function AdminUsersPage() {
     setPage(1);
   }
 
-  const filtered = useMemo(
-    () => users.filter((u) => filter === "All" || u.status === filter),
-    [users, filter]
-  );
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return users.filter((u) => {
+      const matchesFilter = filter === "All" || u.status === filter;
+      const matchesSearch =
+        query === "" ||
+        u.fullName.toLowerCase().includes(query) ||
+        u.email.toLowerCase().includes(query);
+      return matchesFilter && matchesSearch;
+    });
+  }, [users, filter, search]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -106,21 +119,34 @@ export default function AdminUsersPage() {
         <main className="px-10 py-10">
           <h1 className="text-3xl font-semibold text-[#1F2937] mb-8">User Management</h1>
 
-          <div className="inline-flex items-stretch bg-white rounded-xl border border-[#EEF0F3] mb-6 overflow-hidden">
-            <div className="px-4 flex items-center border-r border-[#EEF0F3] text-[#9AA3AF]">
-              <FunnelIcon className="w-4 h-4" />
+          <div className="flex items-center gap-4 mb-6 flex-wrap">
+            <div className="inline-flex items-stretch bg-white rounded-xl border border-[#EEF0F3] overflow-hidden">
+              <div className="px-4 flex items-center border-r border-[#EEF0F3] text-[#9AA3AF]">
+                <FunnelIcon className="w-4 h-4" />
+              </div>
+              {FILTERS.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => changeFilter(f)}
+                  className={`px-6 py-3 text-sm font-medium border-r border-[#EEF0F3] last:border-r-0 transition ${
+                    filter === f ? "text-[#1F2937] bg-[#A9C48C]" : "text-[#8A93A0] hover:bg-[#F9FAFB]"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
             </div>
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                onClick={() => changeFilter(f)}
-                className={`px-6 py-3 text-sm font-medium border-r border-[#EEF0F3] last:border-r-0 transition ${
-                  filter === f ? "text-[#1F2937] bg-[#A9C48C]" : "text-[#8A93A0] hover:bg-[#F9FAFB]"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
+
+            <div className="relative flex-1 min-w-[220px] max-w-xs">
+              <SearchIcon className="w-4 h-4 text-[#9AA3AF] absolute left-4 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Search by name or email"
+                className="w-full bg-white border border-[#EEF0F3] rounded-full pl-11 pr-4 py-2.5 text-sm text-[#374151] placeholder:text-[#9AA3AF] outline-none focus:ring-2 focus:ring-[#8CB369]/30"
+              />
+            </div>
           </div>
 
           {loading ? (
@@ -137,7 +163,9 @@ export default function AdminUsersPage() {
               </div>
 
               {paged.length === 0 ? (
-                <p className="text-sm text-[#8A93A0] px-6 py-6">No users match this filter.</p>
+                <p className="text-sm text-[#8A93A0] px-6 py-6">
+                  No users match {search.trim() ? "your search" : "this filter"}.
+                </p>
               ) : (
                 paged.map((u) => (
                   <div
