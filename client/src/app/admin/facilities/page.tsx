@@ -9,6 +9,9 @@ import {
   updateFacility,
   deleteFacility,
   Facility,
+  FACILITY_CATEGORIES,
+  FACILITY_CATEGORY_LABELS,
+  categoryLabel,
 } from "@/services/facilities.service";
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminTopbar from "@/components/AdminTopbar";
@@ -16,7 +19,7 @@ import Badge from "@/components/Badge";
 import { SkeletonTableRows } from "@/components/Skeleton";
 import { PlusIcon, PencilIcon, TrashIcon } from "@/components/icons";
 
-const EMPTY_FORM = { name: "", type: "", capacity: "" };
+const EMPTY_FORM = { name: "", type: "", category: "", capacity: "" };
 
 export default function AdminFacilitiesPage() {
   const router = useRouter();
@@ -57,14 +60,14 @@ export default function AdminFacilitiesPage() {
 
   function openEdit(f: Facility) {
     setEditing(f);
-    setForm({ name: f.name, type: f.type, capacity: String(f.capacity) });
+    setForm({ name: f.name, type: f.type, category: f.category, capacity: String(f.capacity) });
     setFormError("");
     setModalOpen(true);
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() || !form.type.trim() || !form.capacity) {
+    if (!form.name.trim() || !form.type.trim() || !form.category || !form.capacity) {
       setFormError("Fill in every field.");
       return;
     }
@@ -75,6 +78,7 @@ export default function AdminFacilitiesPage() {
         const updated = await updateFacility(editing.id, {
           name: form.name,
           type: form.type,
+          category: form.category,
           capacity: Number(form.capacity),
         });
         setFacilities((prev) => prev.map((f) => (f.id === editing.id ? { ...f, ...updated } : f)));
@@ -82,6 +86,7 @@ export default function AdminFacilitiesPage() {
         const created = await createFacility({
           name: form.name,
           type: form.type,
+          category: form.category,
           capacity: Number(form.capacity),
         });
         setFacilities((prev) => [...prev, created]);
@@ -126,26 +131,28 @@ export default function AdminFacilitiesPage() {
             </div>
 
             {loading ? (
-              <SkeletonTableRows rows={5} columns={4} />
+              <SkeletonTableRows rows={5} columns={5} />
             ) : error ? (
               <p className="text-sm text-[#B23A3A] px-4 py-6">{error}</p>
             ) : facilities.length === 0 ? (
               <p className="text-sm text-[#8A93A0] px-4 py-6">No facilities added yet.</p>
             ) : (
               <>
-              <div className="grid grid-cols-[1.4fr_1.4fr_1fr_1.6fr] px-4 py-3 rounded-lg bg-[#A9C48C] text-sm font-bold text-white uppercase tracking-wide">
+              <div className="grid grid-cols-[1.2fr_1fr_1.6fr_0.8fr_1.6fr] px-4 py-3 rounded-lg bg-[#A9C48C] text-sm font-bold text-white uppercase tracking-wide">
                 <span>Building Name</span>
                 <span>Description</span>
+                <span>Category</span>
                 <span>Capacity</span>
                 <span>Status</span>
               </div>
               {facilities.map((f) => (
                 <div
                   key={f.id}
-                  className="grid grid-cols-[1.4fr_1.4fr_1fr_1.6fr] items-center px-4 py-5 border-b border-[#F3F5F8] last:border-0"
+                  className="grid grid-cols-[1.2fr_1fr_1.6fr_0.8fr_1.6fr] items-center px-4 py-5 border-b border-[#F3F5F8] last:border-0"
                 >
                   <span className="text-sm text-[#1F2937]">{f.name}</span>
                   <span className="text-sm text-[#6B7280]">{f.type}</span>
+                  <span className="text-xs text-[#6B7280]">{categoryLabel(f.category)}</span>
                   <span className="text-sm text-[#6B7280]">{f.capacity}</span>
                   <div className="flex items-center gap-2">
                     <Badge color={f.isActive ? "success" : "danger"}>
@@ -201,6 +208,21 @@ export default function AdminFacilitiesPage() {
                   className="w-full border border-[#E5E9EF] rounded-lg px-3 py-2.5 text-sm text-[#1F2937] placeholder:text-[#9AA3AF] outline-none focus:ring-2 focus:ring-[#8CB369]/30"
                   placeholder="e.g. Classroom"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Category</label>
+                <select
+                  value={form.category}
+                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                  className="w-full border border-[#E5E9EF] rounded-lg px-3 py-2.5 text-sm text-[#1F2937] outline-none focus:ring-2 focus:ring-[#8CB369]/30 bg-white"
+                >
+                  <option value="">Select a category…</option>
+                  {FACILITY_CATEGORIES.map((key) => (
+                    <option key={key} value={key}>
+                      {FACILITY_CATEGORY_LABELS[key]}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Capacity</label>

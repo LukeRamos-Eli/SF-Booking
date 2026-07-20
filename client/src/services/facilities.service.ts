@@ -2,10 +2,32 @@ import { getToken } from "./auth.service";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// The three fixed facility categories. Keys match the backend enum names
+// exactly (FacilityCategory in Data/Facility.cs) - these are what get sent
+// to/from the API. Labels are the human-readable versions shown in the UI.
+export const FACILITY_CATEGORIES = [
+  "LibraryAndLearning",
+  "InnovationTechnologyAndResearch",
+  "SportsRecreationAndCommunity",
+] as const;
+
+export type FacilityCategoryKey = (typeof FACILITY_CATEGORIES)[number];
+
+export const FACILITY_CATEGORY_LABELS: Record<FacilityCategoryKey, string> = {
+  LibraryAndLearning: "Library & Learning Facilities",
+  InnovationTechnologyAndResearch: "Innovation, Technology & Research Facilities",
+  SportsRecreationAndCommunity: "Sports, Recreation & Community Facilities",
+};
+
+export function categoryLabel(category: string): string {
+  return FACILITY_CATEGORY_LABELS[category as FacilityCategoryKey] ?? category;
+}
+
 export interface Facility {
   id: number;
   name: string;
   type: string;
+  category: string;
   capacity: number;
   isActive: boolean;
   createdAt: string;
@@ -14,6 +36,7 @@ export interface Facility {
 export interface FacilityInput {
   name: string;
   type: string;
+  category: string;
   capacity: number;
 }
 

@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isLoggedIn } from "@/services/auth.service";
-import { getFacilities, getFacilityBookings, Facility, FacilityBookingSlot } from "@/services/facilities.service";
+import {
+  getFacilities,
+  getFacilityBookings,
+  Facility,
+  FacilityBookingSlot,
+  FACILITY_CATEGORIES,
+  categoryLabel,
+} from "@/services/facilities.service";
 import { createBooking } from "@/services/bookings.service";
 import StudentTopbar from "@/components/StudentTopbar";
 import StudentSidebar from "@/components/StudentSidebar";
@@ -18,6 +25,7 @@ export default function StudentFacilitiesPage() {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
 
   const [booking, setBooking] = useState<Facility | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -97,13 +105,44 @@ export default function StudentFacilitiesPage() {
     return sameDay ? `${dateStr}, ${startStr} – ${endStr}` : `${dateStr} ${startStr} – ${e.toLocaleDateString([], { month: "short", day: "numeric" })} ${endStr}`;
   }
 
+  const filteredFacilities = useMemo(() => {
+    if (categoryFilter === "All") return facilities;
+    return facilities.filter((f) => f.category === categoryFilter);
+  }, [facilities, categoryFilter]);
+
   return (
     <div className="min-h-screen bg-[#F3F5F8] flex">
       <StudentSidebar />
       <div className="flex-1">
         <StudentTopbar />
         <main className="px-10 py-10">
-          <h1 className="text-3xl font-semibold text-[#1F2937] mb-8">Facilities</h1>
+          <h1 className="text-3xl font-semibold text-[#1F2937] mb-6">Facilities</h1>
+
+          <div className="flex flex-wrap gap-2 mb-8">
+            <button
+              onClick={() => setCategoryFilter("All")}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                categoryFilter === "All"
+                  ? "bg-[#1B4D3E] text-white"
+                  : "bg-white text-[#6B7280] border border-[#EEF0F3] hover:bg-[#F3F5F8]"
+              }`}
+            >
+              All
+            </button>
+            {FACILITY_CATEGORIES.map((key) => (
+              <button
+                key={key}
+                onClick={() => setCategoryFilter(key)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                  categoryFilter === key
+                    ? "bg-[#1B4D3E] text-white"
+                    : "bg-white text-[#6B7280] border border-[#EEF0F3] hover:bg-[#F3F5F8]"
+                }`}
+              >
+                {categoryLabel(key)}
+              </button>
+            ))}
+          </div>
 
           {loading ? (
             <SkeletonCards count={6} />
@@ -111,11 +150,15 @@ export default function StudentFacilitiesPage() {
             <div className="border border-[#B23A3A]/30 bg-[#B23A3A]/10 rounded-xl px-4 py-3 text-sm text-[#B23A3A]">
               {error}
             </div>
-          ) : facilities.length === 0 ? (
-            <p className="text-sm text-[#8A93A0]">No facilities have been added yet.</p>
+          ) : filteredFacilities.length === 0 ? (
+            <p className="text-sm text-[#8A93A0]">
+              {facilities.length === 0
+                ? "No facilities have been added yet."
+                : "No facilities in this category."}
+            </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {facilities.map((f) => (
+              {filteredFacilities.map((f) => (
                 <div key={f.id} className="bg-white rounded-2xl border border-[#EEF0F3] shadow-sm p-6 flex flex-col justify-between min-h-[220px]">
                   <div>
                     <h2 className="text-2xl font-bold uppercase tracking-tight text-[#1F2937] leading-tight">
@@ -124,6 +167,7 @@ export default function StudentFacilitiesPage() {
                     <p className="text-sm text-[#8A93A0] mt-1">
                       {f.type} | Capacity {f.capacity}
                     </p>
+                    <p className="text-xs text-[#8CB369] font-medium mt-1">{categoryLabel(f.category)}</p>
                   </div>
                   <div className="mt-6 space-y-3">
                     <Badge color={f.isActive ? "success" : "danger"}>
