@@ -41,7 +41,13 @@ namespace SFBooking.Server.Controllers
                     .Where(f => f.OrganizationId == orgId && f.IsActive)
                     .Select(f => new
                     {
-                        f.Id, f.Name, f.Type, f.Capacity, f.IsActive, f.CreatedAt
+                        f.Id,
+                        f.Name,
+                        f.Type,
+                        Category = f.Category.ToString(),
+                        f.Capacity,
+                        f.IsActive,
+                        f.CreatedAt
                     })
                     .OrderBy(f => f.Name).ToListAsync();
 
@@ -63,7 +69,13 @@ namespace SFBooking.Server.Controllers
                     .Where(f => f.Id == id && f.OrganizationId == orgId)
                     .Select(f => new
                     {
-                        f.Id, f.Name, f.Type, f.Capacity, f.IsActive, f.CreatedAt
+                        f.Id,
+                        f.Name,
+                        f.Type,
+                        Category = f.Category.ToString(),
+                        f.Capacity,
+                        f.IsActive,
+                        f.CreatedAt
                     })
                     .FirstOrDefaultAsync();
 
@@ -79,12 +91,6 @@ namespace SFBooking.Server.Controllers
         }
 
         // GET: api/facilities/{id}/bookings
-        // Any logged-in user - the existing Pending/Approved bookings for
-        // this facility, so the booking form can show what's already taken
-        // instead of the user having to guess and hit a conflict error.
-        // Deliberately does NOT return who requested each slot - just the
-        // time ranges - since any student in the org can call this, and
-        // there's no reason to expose other students' names/purposes here.
         [HttpGet("{id}/bookings")]
         public async Task<IActionResult> GetBookings(int id)
         {
@@ -151,7 +157,11 @@ namespace SFBooking.Server.Controllers
 
                 var result = allFacilities.Select(f => new
                 {
-                    f.Id, f.Name, f.Type, f.Capacity,
+                    f.Id,
+                    f.Name,
+                    f.Type,
+                    Category = f.Category.ToString(),
+                    f.Capacity,
                     IsAvailable = !bookedFacilityIds.Contains(f.Id)
                 });
 
@@ -175,6 +185,8 @@ namespace SFBooking.Server.Controllers
                     return BadRequest(new { message = "Facility type is required." });
                 if (dto.Capacity <= 0)
                     return BadRequest(new { message = "Capacity must be greater than 0." });
+                if (!Enum.TryParse<FacilityCategory>(dto.Category, true, out var category))
+                    return BadRequest(new { message = "Invalid category. Valid values: LibraryAndLearning, InnovationTechnologyAndResearch, SportsRecreationAndCommunity" });
 
                 var orgId = await GetCurrentUserOrgId();
                 var currentUserId = GetCurrentUserId();
@@ -191,6 +203,7 @@ namespace SFBooking.Server.Controllers
                     OrganizationId = orgId,
                     Name = dto.Name,
                     Type = dto.Type,
+                    Category = category,
                     Capacity = dto.Capacity,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
@@ -213,8 +226,13 @@ namespace SFBooking.Server.Controllers
 
                 return CreatedAtAction(nameof(GetById), new { id = facility.Id }, new
                 {
-                    facility.Id, facility.Name, facility.Type,
-                    facility.Capacity, facility.IsActive, facility.CreatedAt
+                    facility.Id,
+                    facility.Name,
+                    facility.Type,
+                    Category = facility.Category.ToString(),
+                    facility.Capacity,
+                    facility.IsActive,
+                    facility.CreatedAt
                 });
             }
             catch (Exception ex)
@@ -241,6 +259,12 @@ namespace SFBooking.Server.Controllers
                 if (!string.IsNullOrWhiteSpace(dto.Name)) facility.Name = dto.Name;
                 if (!string.IsNullOrWhiteSpace(dto.Type)) facility.Type = dto.Type;
                 if (dto.Capacity.HasValue && dto.Capacity > 0) facility.Capacity = dto.Capacity.Value;
+                if (!string.IsNullOrWhiteSpace(dto.Category))
+                {
+                    if (!Enum.TryParse<FacilityCategory>(dto.Category, true, out var category))
+                        return BadRequest(new { message = "Invalid category. Valid values: LibraryAndLearning, InnovationTechnologyAndResearch, SportsRecreationAndCommunity" });
+                    facility.Category = category;
+                }
 
                 await _context.SaveChangesAsync();
 
@@ -258,8 +282,12 @@ namespace SFBooking.Server.Controllers
 
                 return Ok(new
                 {
-                    facility.Id, facility.Name, facility.Type,
-                    facility.Capacity, facility.IsActive
+                    facility.Id,
+                    facility.Name,
+                    facility.Type,
+                    Category = facility.Category.ToString(),
+                    facility.Capacity,
+                    facility.IsActive
                 });
             }
             catch (Exception ex)
@@ -361,6 +389,7 @@ namespace SFBooking.Server.Controllers
     {
         public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
         public int Capacity { get; set; }
     }
 
@@ -368,6 +397,7 @@ namespace SFBooking.Server.Controllers
     {
         public string? Name { get; set; }
         public string? Type { get; set; }
+        public string? Category { get; set; }
         public int? Capacity { get; set; }
     }
 }
