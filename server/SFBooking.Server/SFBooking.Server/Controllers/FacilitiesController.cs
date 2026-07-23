@@ -41,13 +41,9 @@ namespace SFBooking.Server.Controllers
                     .Where(f => f.OrganizationId == orgId && f.IsActive)
                     .Select(f => new
                     {
-                        f.Id,
-                        f.Name,
-                        f.Type,
+                        f.Id, f.Name, f.Type,
                         Category = f.Category.ToString(),
-                        f.Capacity,
-                        f.IsActive,
-                        f.CreatedAt
+                        f.Capacity, f.IsActive, f.CreatedAt
                     })
                     .OrderBy(f => f.Name).ToListAsync();
 
@@ -69,13 +65,9 @@ namespace SFBooking.Server.Controllers
                     .Where(f => f.Id == id && f.OrganizationId == orgId)
                     .Select(f => new
                     {
-                        f.Id,
-                        f.Name,
-                        f.Type,
+                        f.Id, f.Name, f.Type,
                         Category = f.Category.ToString(),
-                        f.Capacity,
-                        f.IsActive,
-                        f.CreatedAt
+                        f.Capacity, f.IsActive, f.CreatedAt
                     })
                     .FirstOrDefaultAsync();
 
@@ -135,8 +127,8 @@ namespace SFBooking.Server.Controllers
             try
             {
                 var orgId = await GetCurrentUserOrgId();
-                var requestedStart = date.Date + startTime;
-                var requestedEnd = date.Date + endTime;
+                var requestedStart = DateTime.SpecifyKind(date.Date + startTime, DateTimeKind.Utc);
+                var requestedEnd = DateTime.SpecifyKind(date.Date + endTime, DateTimeKind.Utc);
 
                 if (requestedEnd <= requestedStart)
                     return BadRequest(new { message = "End time must be after start time." });
@@ -157,9 +149,7 @@ namespace SFBooking.Server.Controllers
 
                 var result = allFacilities.Select(f => new
                 {
-                    f.Id,
-                    f.Name,
-                    f.Type,
+                    f.Id, f.Name, f.Type,
                     Category = f.Category.ToString(),
                     f.Capacity,
                     IsAvailable = !bookedFacilityIds.Contains(f.Id)
@@ -226,13 +216,9 @@ namespace SFBooking.Server.Controllers
 
                 return CreatedAtAction(nameof(GetById), new { id = facility.Id }, new
                 {
-                    facility.Id,
-                    facility.Name,
-                    facility.Type,
+                    facility.Id, facility.Name, facility.Type,
                     Category = facility.Category.ToString(),
-                    facility.Capacity,
-                    facility.IsActive,
-                    facility.CreatedAt
+                    facility.Capacity, facility.IsActive, facility.CreatedAt
                 });
             }
             catch (Exception ex)
@@ -282,12 +268,9 @@ namespace SFBooking.Server.Controllers
 
                 return Ok(new
                 {
-                    facility.Id,
-                    facility.Name,
-                    facility.Type,
+                    facility.Id, facility.Name, facility.Type,
                     Category = facility.Category.ToString(),
-                    facility.Capacity,
-                    facility.IsActive
+                    facility.Capacity, facility.IsActive
                 });
             }
             catch (Exception ex)

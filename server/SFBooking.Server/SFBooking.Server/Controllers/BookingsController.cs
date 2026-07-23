@@ -32,6 +32,24 @@ namespace SFBooking.Server.Controllers
             return user!.OrganizationId;
         }
 
+        // Postgres's "timestamp with time zone" columns require every
+        // DateTime written to (or compared against, in a query parameter)
+        // them to have Kind = Utc. A JSON date string with no "Z" or offset
+        // (e.g. "2026-08-01T09:00:00") deserializes as Kind = Unspecified,
+        // which Npgsql rejects outright rather than guessing what timezone
+        // was meant. This normalizes any incoming DateTime to Utc kind
+        // before it's ever used in a query or saved, regardless of how the
+        // client formatted it.
+        private static DateTime EnsureUtc(DateTime dt)
+        {
+            return dt.Kind switch
+            {
+                DateTimeKind.Utc => dt,
+                DateTimeKind.Local => dt.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
+            };
+        }
+
         // GET: api/bookings/mine
         [HttpGet("mine")]
         public async Task<IActionResult> GetMine()
@@ -147,10 +165,13 @@ namespace SFBooking.Server.Controllers
         {
             try
             {
-                if (dto.EndTime <= dto.StartTime)
+                var startTime = EnsureUtc(dto.StartTime);
+                var endTime = EnsureUtc(dto.EndTime);
+
+                if (endTime <= startTime)
                     return BadRequest(new { message = "End time must be after start time." });
 
-                if (dto.StartTime < DateTime.UtcNow)
+                if (startTime < DateTime.UtcNow)
                     return BadRequest(new { message = "Cannot book a time in the past." });
 
                 if (string.IsNullOrWhiteSpace(dto.Purpose))
@@ -171,8 +192,8 @@ namespace SFBooking.Server.Controllers
                 var hasConflict = await _context.Bookings.AnyAsync(b =>
                     b.FacilityId == dto.FacilityId &&
                     (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Approved) &&
-                    b.StartTime < dto.EndTime &&
-                    b.EndTime > dto.StartTime);
+                    b.StartTime < endTime &&
+                    b.EndTime > startTime);
 
                 if (hasConflict)
                     return BadRequest(new { message = "This facility is already booked or pending for that time slot." });
@@ -181,8 +202,8 @@ namespace SFBooking.Server.Controllers
                 {
                     FacilityId = dto.FacilityId,
                     RequestedById = userId,
-                    StartTime = dto.StartTime,
-                    EndTime = dto.EndTime,
+                    StartTime = startTime,
+                    EndTime = endTime,
                     Purpose = dto.Purpose,
                     Status = BookingStatus.Pending,
                     CreatedAt = DateTime.UtcNow
@@ -221,11 +242,6 @@ namespace SFBooking.Server.Controllers
         }
 
         // PUT: api/bookings/{id}
-        // Owner only - edit a booking that is still Pending. Re-runs the same
-        // validation and conflict checks as Create, since the time/facility
-        // may be changing. Approved/Rejected/Cancelled bookings can't be
-        // edited directly - cancel and resubmit instead, so the approval
-        // that already happened can't be silently bypassed.
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateBookingDto dto)
         {
@@ -248,8 +264,8 @@ namespace SFBooking.Server.Controllers
                     return BadRequest(new { message = "Only pending bookings can be edited. Cancel and resubmit instead." });
 
                 var newFacilityId = dto.FacilityId ?? booking.FacilityId;
-                var newStart = dto.StartTime ?? booking.StartTime;
-                var newEnd = dto.EndTime ?? booking.EndTime;
+                var newStart = dto.StartTime.HasValue ? EnsureUtc(dto.StartTime.Value) : booking.StartTime;
+                var newEnd = dto.EndTime.HasValue ? EnsureUtc(dto.EndTime.Value) : booking.EndTime;
                 var newPurpose = string.IsNullOrWhiteSpace(dto.Purpose) ? booking.Purpose : dto.Purpose;
 
                 if (newEnd <= newStart)
